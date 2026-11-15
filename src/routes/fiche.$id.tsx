@@ -32,6 +32,8 @@ function Section({ kicker, title, children, watermark }: { kicker: string; title
   );
 }
 
+const DOTS = ["bg-gold", "bg-rank-m", "bg-rank-a", "bg-rank-e", "bg-rank-s", "bg-oral"];
+
 function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolean; onChange: (i: Item[]) => void; kind: "history" | "badge" | "warning" }) {
   const upd = (id: string, p: Partial<Item>) => onChange(items.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const sorted = edit ? items : [...items].sort((a, b) => a.date.localeCompare(b.date));
@@ -39,9 +41,9 @@ function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolea
     <div>
       {!sorted.length && !edit && <p className="text-muted-foreground">Rien pour le moment.</p>}
       <ol className={kind === "history" ? "relative space-y-5 border-l border-border pl-6" : "grid gap-3 sm:grid-cols-2"}>
-        {sorted.map((it) => (
+        {sorted.map((it, idx) => (
           <li key={it.id} className={kind === "history" ? "relative" : `flex items-start gap-3 rounded-xl border p-4 ${kind === "warning" ? WARN[it.kind ?? "ecrit"].soft : "border-gold/30 bg-gold/5"}`}>
-            {kind === "history" && <span className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-gold ring-4 ring-card" />}
+            {kind === "history" && <span className={`absolute -left-[31px] top-1.5 h-3 w-3 rounded-full ring-4 ring-card ${DOTS[idx % DOTS.length]}`} />}
             {kind !== "history" && <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full font-display ${kind === "warning" ? `${WARN[it.kind ?? "ecrit"].bg} text-primary-foreground` : "bg-gold text-primary-foreground"}`}>{kind === "warning" ? "!" : "★"}</span>}
             {edit ? (
               <div className="grid flex-1 gap-2">

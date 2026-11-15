@@ -95,13 +95,10 @@ function Equipe() {
               <button onClick={() => setShowW(false)} className="absolute right-5 top-5 grid h-9 w-9 place-items-center rounded-lg border border-border">✕</button>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-rank-s">Cercle actuellement actif</p>
               <h2 className="mt-1 text-3xl font-bold">Avertissements actifs</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Seuls les avertissements oraux et écrits encore valides sont affichés.</p>
             </div>
             <div className="flex flex-wrap gap-2 border-y border-border px-7 py-4 text-xs font-bold">
               <span className="rounded-full border border-border px-3 py-1.5">{active.length} avertissements</span>
               <span className="rounded-full border border-border px-3 py-1.5">{new Set(active.map((a) => a.f.id)).size} amis concernés</span>
-              <span className="rounded-full border border-rank-s/40 bg-rank-s/10 px-3 py-1.5 text-rank-s">Écrit = grave</span>
-              <span className="rounded-full border border-oral/40 bg-oral/10 px-3 py-1.5 text-oral">Oral = léger</span>
             </div>
             <div className="space-y-3 overflow-y-auto p-7">
               {!active.length && <p className="text-center text-muted-foreground">Aucun avertissement actif.</p>}
