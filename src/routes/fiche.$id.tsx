@@ -76,16 +76,16 @@ function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: bool
   return (
     <div>
       {!items.length && !edit && <p className="text-muted-foreground">Aucune information. Clique sur « Modifier » pour en ajouter.</p>}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it) => (
-          <div key={it.id} className="flex gap-4 rounded-xl border border-border bg-background/40 p-4">
+          <div key={it.id} className="flex gap-3 rounded-lg border border-border bg-background/40 p-3">
             {it.image ? (
               <div className="relative shrink-0">
-                <img src={it.image} alt="" className="h-24 w-24 cursor-zoom-in rounded-lg object-cover" onClick={() => onZoom(it.image)} />
+                <img src={it.image} alt="" className="h-14 w-14 cursor-zoom-in rounded-md object-cover" onClick={() => onZoom(it.image)} />
                 {edit && <button className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-card text-xs text-rank-s" onClick={() => upd(it.id, { image: "" })}>✕</button>}
               </div>
             ) : edit ? (
-              <label className="grid h-24 w-24 shrink-0 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-center text-[11px] font-bold text-muted-foreground hover:border-gold hover:text-gold">
+              <label className="grid h-14 w-14 shrink-0 cursor-pointer place-items-center rounded-md border-2 border-dashed border-border text-center text-[11px] font-bold text-muted-foreground hover:border-gold hover:text-gold">
                 + Screen
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) upd(it.id, { image: await fileToDataUrl(file) }); }} />
               </label>
@@ -98,7 +98,7 @@ function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: bool
             ) : (
               <div className="min-w-0">
                 <div className="text-[11px] font-bold uppercase tracking-widest text-gold">{it.label || "Info"}</div>
-                <div className="mt-1 whitespace-pre-wrap break-words font-medium">{it.value || "—"}</div>
+                <div className="mt-0.5 whitespace-pre-wrap break-words text-sm font-medium">{it.value || "—"}</div>
               </div>
             )}
           </div>
