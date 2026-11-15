@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Item, type Rank } from "@/lib/friends";
+import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/fiche/$id")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s["edit"] === true || s["edit"] === "true" }),
@@ -67,6 +67,44 @@ function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolea
         ))}
       </ol>
       {edit && <button className={`${btn} mt-4`} onClick={() => onChange([...items, { id: uid(), date: new Date().toISOString().slice(0, 10), title: "", note: "", ...(kind === "warning" ? { kind: "ecrit" as const, until: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10), by: "" } : {}) }])}>+ Ajouter</button>}
+    </div>
+  );
+}
+
+function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: boolean; onChange: (i: Info[]) => void; onZoom: (s: string) => void }) {
+  const upd = (id: string, p: Partial<Info>) => onChange(items.map((x) => (x.id === id ? { ...x, ...p } : x)));
+  return (
+    <div>
+      {!items.length && !edit && <p className="text-muted-foreground">Aucune information. Clique sur « Modifier » pour en ajouter.</p>}
+      <div className="grid gap-3 md:grid-cols-2">
+        {items.map((it) => (
+          <div key={it.id} className="flex gap-4 rounded-xl border border-border bg-background/40 p-4">
+            {it.image ? (
+              <div className="relative shrink-0">
+                <img src={it.image} alt="" className="h-24 w-24 cursor-zoom-in rounded-lg object-cover" onClick={() => onZoom(it.image)} />
+                {edit && <button className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-card text-xs text-rank-s" onClick={() => upd(it.id, { image: "" })}>✕</button>}
+              </div>
+            ) : edit ? (
+              <label className="grid h-24 w-24 shrink-0 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-center text-[11px] font-bold text-muted-foreground hover:border-gold hover:text-gold">
+                + Screen
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) upd(it.id, { image: await fileToDataUrl(file) }); }} />
+              </label>
+            ) : null}
+            {edit ? (
+              <div className="grid flex-1 gap-2">
+                <div className="flex gap-2"><input className={field} placeholder="Titre (ex : Snapchat)" value={it.label} onChange={(e) => upd(it.id, { label: e.target.value })} /><button onClick={() => onChange(items.filter((x) => x.id !== it.id))} className="px-2 text-rank-s">✕</button></div>
+                <textarea rows={2} className={field} placeholder="Info" value={it.value} onChange={(e) => upd(it.id, { value: e.target.value })} />
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-widest text-gold">{it.label || "Info"}</div>
+                <div className="mt-1 whitespace-pre-wrap break-words font-medium">{it.value || "—"}</div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {edit && <button className={`${btn} mt-4`} onClick={() => onChange([...items, { id: uid(), label: "", value: "", image: "" }])}>+ Ajouter une info</button>}
     </div>
   );
 }
@@ -169,6 +207,10 @@ function Fiche() {
               <Section kicker="Discipline" title={`Avertissements · ${f.warnings.length}`}><ItemList kind="warning" edit={edit} items={f.warnings} onChange={(warnings) => set({ warnings })} /></Section>
             </div>
           </div>
+
+          <Section kicker="Dossier" title="Informations connues">
+            <InfoList edit={edit} items={f.infos ?? []} onChange={(infos) => set({ infos })} onZoom={setZoom} />
+          </Section>
 
           <Section kicker="Souvenirs" title="Photos">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

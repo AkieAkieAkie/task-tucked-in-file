@@ -14,7 +14,9 @@ export const WARN = { ecrit: { label: "Écrit", desc: "grave", text: "text-rank-
 export const today = () => new Date().toISOString().slice(0, 10);
 export const isActive = (w: Item) => !!w.until && w.until >= today();
 export const daysLeft = (w: Item) => Math.round((new Date(w.until!).getTime() - new Date(today()).getTime()) / 864e5);
+export type Info = { id: string; label: string; value: string; image: string };
 export type Friend = {
+  infos?: Info[];
   id: string; name: string; role: string; group: string; ig: string; phone: string;
   since: string; rank: Rank; blacklisted: boolean; avatar: string; review: string; remark: string;
   history: Item[]; badges: Item[]; warnings: Item[]; photos: string[];
