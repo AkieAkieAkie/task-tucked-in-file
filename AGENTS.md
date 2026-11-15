@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- Site access and admin editing are gated by server-checked codes (SITE_PASSWORD, ADMIN_PASSWORD env) stored in an encrypted session cookie; codes never ship to the browser.

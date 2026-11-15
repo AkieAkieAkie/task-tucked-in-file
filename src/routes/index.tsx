@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { AdminButton, useAccess } from "@/components/Gate";
 import { WARN, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/")({
@@ -22,6 +23,7 @@ const lbl = "mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-m
 
 function Equipe() {
   const { list, save } = useFriends();
+  const { admin } = useAccess();
   const nav = useNavigate();
   const [q, setQ] = useState(""); const [g, setG] = useState(""); const [r, setR] = useState(""); const [st, setSt] = useState("");
   const groups = useMemo(() => [...new Set(list.map((f) => f.group || "Non renseigné"))], [list]);
@@ -52,7 +54,7 @@ function Equipe() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Annuaire</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div><h2 className="text-4xl font-bold">Les fiches</h2><p className="mt-1 text-muted-foreground">{shown.length} résultats</p></div>
-            <div className="flex gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><button onClick={add} className="rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">+ Ajouter un ami</button></div>
+            <div className="flex gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <button onClick={add} className="rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">+ Ajouter un ami</button>}</div>
           </div>
 
           <div className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[2fr_1fr_1fr_1fr]">

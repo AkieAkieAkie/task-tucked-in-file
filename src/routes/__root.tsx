@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { getAccess } from "../lib/gate.functions";
+import { CodeForm } from "../components/Gate";
 
 function NotFoundComponent() {
   return (
@@ -99,6 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
+  loader: () => getAccess(),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -121,6 +124,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { site } = Route.useLoaderData();
+  if (!site) return <main className="grid min-h-screen place-items-center bg-background p-4"><CodeForm level="site" kicker="Cercle privé" title="Code de connexion" /></main>;
 
   return (
     <QueryClientProvider client={queryClient}>

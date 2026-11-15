@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
+import { AdminButton, useAccess } from "@/components/Gate";
 import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/fiche/$id")({
@@ -111,7 +112,8 @@ function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: bool
 
 function Fiche() {
   const { id } = Route.useParams();
-  const { edit } = Route.useSearch();
+  const { admin } = useAccess();
+  const edit = Route.useSearch().edit && admin;
   const nav = useNavigate();
   const { list, ready, save } = useFriends();
   const saved = list.find((f) => f.id === id);
@@ -144,7 +146,7 @@ function Fiche() {
             {edit ? (<>
               <button className={btn} onClick={cancel}>Annuler</button>
               <button className="rounded-lg bg-gold px-5 py-2 text-sm font-bold text-primary-foreground" onClick={commit}>Enregistrer</button>
-            </>) : (<>
+            </>) : !admin ? <AdminButton /> : (<>
               <button className={btn} onClick={() => setEdit(true)}>✎ Modifier</button>
               <button className={`${btn} hover:border-rank-s hover:text-rank-s`} onClick={remove}>Supprimer</button>
             </>)}
