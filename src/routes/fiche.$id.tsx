@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Item, type Rank } from "@/lib/friends";
+import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Item, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/fiche/$id")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s["edit"] === true || s["edit"] === "true" }),
@@ -40,18 +40,23 @@ function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolea
       {!sorted.length && !edit && <p className="text-muted-foreground">Rien pour le moment.</p>}
       <ol className={kind === "history" ? "relative space-y-5 border-l border-border pl-6" : "grid gap-3 sm:grid-cols-2"}>
         {sorted.map((it) => (
-          <li key={it.id} className={kind === "history" ? "relative" : `flex items-start gap-3 rounded-xl border p-4 ${kind === "warning" ? "border-rank-s/40 bg-rank-s/10" : "border-gold/30 bg-gold/5"}`}>
+          <li key={it.id} className={kind === "history" ? "relative" : `flex items-start gap-3 rounded-xl border p-4 ${kind === "warning" ? WARN[it.kind ?? "ecrit"].soft : "border-gold/30 bg-gold/5"}`}>
             {kind === "history" && <span className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-gold ring-4 ring-card" />}
-            {kind !== "history" && <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full font-display ${kind === "warning" ? "bg-rank-s text-foreground" : "bg-gold text-primary-foreground"}`}>{kind === "warning" ? "!" : "★"}</span>}
+            {kind !== "history" && <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full font-display ${kind === "warning" ? `${WARN[it.kind ?? "ecrit"].bg} text-primary-foreground` : "bg-gold text-primary-foreground"}`}>{kind === "warning" ? "!" : "★"}</span>}
             {edit ? (
               <div className="grid flex-1 gap-2">
                 <div className="flex gap-2"><input type="date" className={field} value={it.date} onChange={(e) => upd(it.id, { date: e.target.value })} /><button onClick={() => onChange(items.filter((x) => x.id !== it.id))} className="px-2 text-rank-s">✕</button></div>
                 <input className={field} placeholder="Titre" value={it.title} onChange={(e) => upd(it.id, { title: e.target.value })} />
                 <input className={field} placeholder="Détail (optionnel)" value={it.note} onChange={(e) => upd(it.id, { note: e.target.value })} />
+                {kind === "warning" && (<div className="grid grid-cols-2 gap-2">
+                  <select className={field} value={it.kind ?? "ecrit"} onChange={(e) => upd(it.id, { kind: e.target.value as "ecrit" | "oral" })}><option value="ecrit">Écrit (grave)</option><option value="oral">Oral (léger)</option></select>
+                  <input className={field} placeholder="Attribué par" value={it.by ?? ""} onChange={(e) => upd(it.id, { by: e.target.value })} />
+                  <label className="col-span-2 text-xs text-muted-foreground">Actif jusqu'au<input type="date" className={`${field} mt-1`} value={it.until ?? ""} onChange={(e) => upd(it.id, { until: e.target.value })} /></label>
+                </div>)}
               </div>
             ) : (
               <div>
-                <div className="text-xs font-bold text-muted-foreground">{fmt(it.date)}</div>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-muted-foreground">{kind === "warning" && <span className={`rounded-full border px-2 py-0.5 uppercase ${WARN[it.kind ?? "ecrit"].soft} ${WARN[it.kind ?? "ecrit"].text}`}>{WARN[it.kind ?? "ecrit"].label}</span>}{fmt(it.date)}{kind === "warning" && it.until && <span>{isActive(it) ? `· actif jusqu'au ${fmt(it.until)}` : "· expiré"}</span>}</div>
                 <div className="font-bold">{it.title}</div>
                 {it.note && <div className="text-sm text-muted-foreground">{it.note}</div>}
               </div>
@@ -59,7 +64,7 @@ function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolea
           </li>
         ))}
       </ol>
-      {edit && <button className={`${btn} mt-4`} onClick={() => onChange([...items, { id: uid(), date: new Date().toISOString().slice(0, 10), title: "", note: "" }])}>+ Ajouter</button>}
+      {edit && <button className={`${btn} mt-4`} onClick={() => onChange([...items, { id: uid(), date: new Date().toISOString().slice(0, 10), title: "", note: "", ...(kind === "warning" ? { kind: "ecrit" as const, until: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10), by: "" } : {}) }])}>+ Ajouter</button>}
     </div>
   );
 }

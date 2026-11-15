@@ -45,6 +45,7 @@
   --color-rank-t: var(--rank-t);
   --color-rank-f: var(--rank-f);
   --color-rank-s: var(--rank-s);
+  --color-oral: var(--oral);
   --font-display: "Archivo Black", sans-serif;
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -89,6 +90,7 @@
   --rank-t: oklch(0.7 0.02 260);
   --rank-f: oklch(0.78 0.16 65);
   --rank-s: oklch(0.65 0.22 25);
+  --oral: oklch(0.87 0.17 95);
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);

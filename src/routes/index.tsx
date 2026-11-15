@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
+import { WARN, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +29,8 @@ function Equipe() {
     const t = `${f.name} ${f.ig} ${f.phone} ${f.role}`.toLowerCase();
     return t.includes(q.toLowerCase()) && (!g || (f.group || "Non renseigné") === g) && (!r || f.rank === r) && (!st || (st === "bl") === f.blacklisted);
   });
+  const [showW, setShowW] = useState(false);
+  const active = list.flatMap((f) => f.warnings.filter(isActive).map((w) => ({ f, w }))).sort((a, b) => a.w.until!.localeCompare(b.w.until!));
   const add = () => { const f = blankFriend(); save([f, ...list]); nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
 
   return (
@@ -37,7 +39,6 @@ function Equipe() {
         <div>
           <p className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-gold"><span className="h-2 w-2 rounded-full bg-rank-m" />Archives publiques validées</p>
           <h1 className="font-display text-6xl leading-[0.95] md:text-8xl">Cercle<br /><span className="text-gold">privé.</span></h1>
-          <p className="mt-6 max-w-xl text-muted-foreground">Retrouve l’évolution, les récompenses et l’évaluation finale de mes amis.</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="font-display text-5xl text-gold">{list.length}</div>
@@ -51,7 +52,7 @@ function Equipe() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Annuaire</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div><h2 className="text-4xl font-bold">Les fiches</h2><p className="mt-1 text-muted-foreground">{shown.length} résultats</p></div>
-            <button onClick={add} className="rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">+ Ajouter un ami</button>
+            <div className="flex gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><button onClick={add} className="rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">+ Ajouter un ami</button></div>
           </div>
 
           <div className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[2fr_1fr_1fr_1fr]">
@@ -77,7 +78,7 @@ function Equipe() {
                   <div><h3 className="text-xl font-bold">{f.name}</h3><p className="text-sm text-muted-foreground">{f.role || "—"}</p></div>
                 </div>
                 <dl className="relative mt-6 grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-border bg-background/40 p-4 text-sm">
-                  {([["Instagram", f.ig ? `@${f.ig.replace(/^@/, "")}` : "", ""], ["Numéro", f.phone, ""], ["Statut", f.blacklisted ? "Blacklisté" : "Non blacklisté", f.blacklisted ? "text-rank-s" : "text-rank-m"], ["Avertissements", String(f.warnings.length), f.warnings.length ? "text-rank-s" : ""]] as const).map(([k, v, c]) => (
+                  {([["Instagram", f.ig ? `@${f.ig.replace(/^@/, "")}` : "", ""], ["Numéro", f.phone, ""], ["Statut", f.blacklisted ? "Blacklisté" : "Non blacklisté", f.blacklisted ? "text-rank-s" : "text-rank-m"], ["Avertissements", `${f.warnings.filter(isActive).length} actif${f.warnings.filter(isActive).length > 1 ? "s" : ""}`, f.warnings.some((w) => isActive(w) && w.kind !== "oral") ? "text-rank-s" : f.warnings.some(isActive) ? "text-oral" : ""]] as const).map(([k, v, c]) => (
                     <div key={k} className="min-w-0"><dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{k}</dt><dd className={`mt-1 truncate font-bold ${c}`}>{v || "—"}</dd></div>
                   ))}
                 </dl>
@@ -87,6 +88,40 @@ function Equipe() {
         </div>
       </section>
 
+      {showW && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background/80 p-4 backdrop-blur-sm" onClick={() => setShowW(false)}>
+          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-rank-s/30 bg-card" onClick={(e) => e.stopPropagation()}>
+            <div className="relative bg-gradient-to-br from-rank-s/15 to-transparent p-7">
+              <button onClick={() => setShowW(false)} className="absolute right-5 top-5 grid h-9 w-9 place-items-center rounded-lg border border-border">✕</button>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-rank-s">Cercle actuellement actif</p>
+              <h2 className="mt-1 text-3xl font-bold">Avertissements actifs</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Seuls les avertissements oraux et écrits encore valides sont affichés.</p>
+            </div>
+            <div className="flex flex-wrap gap-2 border-y border-border px-7 py-4 text-xs font-bold">
+              <span className="rounded-full border border-border px-3 py-1.5">{active.length} avertissements</span>
+              <span className="rounded-full border border-border px-3 py-1.5">{new Set(active.map((a) => a.f.id)).size} amis concernés</span>
+              <span className="rounded-full border border-rank-s/40 bg-rank-s/10 px-3 py-1.5 text-rank-s">Écrit = grave</span>
+              <span className="rounded-full border border-oral/40 bg-oral/10 px-3 py-1.5 text-oral">Oral = léger</span>
+            </div>
+            <div className="space-y-3 overflow-y-auto p-7">
+              {!active.length && <p className="text-center text-muted-foreground">Aucun avertissement actif.</p>}
+              {active.map(({ f, w }) => { const W = WARN[w.kind ?? "ecrit"]; const d = daysLeft(w); return (
+                <Link key={w.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} className={`grid gap-4 rounded-xl border border-l-4 border-border ${W.bar} bg-background/40 p-4 sm:grid-cols-[1fr_1.5fr_auto]`}>
+                  <div className="flex items-center gap-3">
+                    {f.avatar ? <img src={f.avatar} alt="" className="h-11 w-11 rounded-xl object-cover" /> : <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-gold to-rank-f font-display text-primary-foreground">{f.name[0]?.toUpperCase()}</div>}
+                    <div><div className="font-bold">{f.name}</div><div className="text-xs text-muted-foreground">{f.role || "—"}</div></div>
+                  </div>
+                  <div>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${W.soft} ${W.text}`}>{W.label}</span>
+                    <div className="mt-2 text-sm font-medium">{w.title || "—"}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Attribué{w.by ? ` par ${w.by}` : ""} le {fmt(w.date)}</div>
+                  </div>
+                  <div className="text-right"><div className="text-sm font-bold">Jusqu'au {fmt(w.until!)}</div><div className="text-xs text-muted-foreground">{d === 0 ? "Dernier jour" : `${d} jour${d > 1 ? "s" : ""} restant${d > 1 ? "s" : ""}`}</div></div>
+                </Link>); })}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
