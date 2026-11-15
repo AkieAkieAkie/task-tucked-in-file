@@ -6,7 +6,7 @@ import { RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Équipe — Le classement de mes amis" },
+      { title: "Cercle privé — Mes amis" },
       { name: "description", content: "Les fiches de mes amis, classées E · M · A · T · F · S." },
       { property: "og:title", content: "Équipe — Le classement de mes amis" },
       { property: "og:description", content: "Les fiches de mes amis, classées E · M · A · T · F · S." },
@@ -26,7 +26,7 @@ function Equipe() {
   const [q, setQ] = useState(""); const [g, setG] = useState(""); const [r, setR] = useState(""); const [st, setSt] = useState("");
   const groups = useMemo(() => [...new Set(list.map((f) => f.group || "Non renseigné"))], [list]);
   const shown = list.filter((f) => {
-    const t = `${f.name} ${f.steam} ${f.discord} ${f.role}`.toLowerCase();
+    const t = `${f.name} ${f.ig} ${f.phone} ${f.role}`.toLowerCase();
     return t.includes(q.toLowerCase()) && (!g || (f.group || "Non renseigné") === g) && (!r || f.rank === r) && (!st || (st === "bl") === f.blacklisted);
   });
   const add = () => { const f = blankFriend(); save([f, ...list]); nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
@@ -36,7 +36,7 @@ function Equipe() {
       <section className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-8 px-6 py-20">
         <div>
           <p className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-gold"><span className="h-2 w-2 rounded-full bg-rank-m" />Archives publiques validées</p>
-          <h1 className="font-display text-6xl leading-[0.95] md:text-8xl">Chaque<br />parcours<br /><span className="text-gold">laisse une<br />trace.</span></h1>
+          <h1 className="font-display text-6xl leading-[0.95] md:text-8xl">Cercle<br /><span className="text-gold">privé.</span></h1>
           <p className="mt-6 max-w-xl text-muted-foreground">Retrouve l’évolution, les récompenses et l’évaluation finale de mes amis.</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-6">
@@ -55,32 +55,33 @@ function Equipe() {
           </div>
 
           <div className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[2fr_1fr_1fr_1fr]">
-            <div><label className={lbl}>Rechercher une fiche</label><input className={field} placeholder="Nom, SteamID, Discord ou grade" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-            <div><label className={lbl}>Serveur / service</label><select className={field} value={g} onChange={(e) => setG(e.target.value)}><option value="">Tous les services</option>{groups.map((x) => <option key={x}>{x}</option>)}</select></div>
+            <div><label className={lbl}>Rechercher une fiche</label><input className={field} placeholder="Nom, Instagram, numéro ou rank" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+            <div><label className={lbl}>De où</label><select className={field} value={g} onChange={(e) => setG(e.target.value)}><option value="">Tous les lieux</option>{groups.map((x) => <option key={x}>{x}</option>)}</select></div>
             <div><label className={lbl}>Classification</label><select className={field} value={r} onChange={(e) => setR(e.target.value)}><option value="">Toutes les classifications</option>{(Object.keys(RANKS) as Rank[]).map((k) => <option key={k} value={k}>{k} — {RANKS[k].label}</option>)}</select></div>
             <div><label className={lbl}>État de la fiche</label><select className={field} value={st} onChange={(e) => setSt(e.target.value)}><option value="">Tous les statuts</option><option value="ok">Non blacklisté</option><option value="bl">Blacklisté</option></select></div>
           </div>
 
           <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {shown.map((f) => { const R = RANKS[f.rank]; return (
-              <Link key={f.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} className="group relative overflow-hidden rounded-xl border border-border bg-card p-5 transition hover:-translate-y-1 hover:border-gold/60">
-                <div className={`absolute inset-x-0 top-0 h-0.5 ${R.bg}`} />
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-border px-3 py-1 text-[11px] font-bold uppercase text-gold">{f.group || "—"}</span>
-                  <span className={`rounded-md border px-2 py-0.5 font-display ${R.text} ${R.soft}`}>{f.rank}</span>
+              <Link key={f.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-lg transition hover:-translate-y-1 hover:border-gold/50">
+                <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${R.grad} to-transparent`} />
+                <span className={`pointer-events-none absolute -right-2 top-10 select-none font-display text-9xl leading-none opacity-[0.06] ${R.text}`}>{f.rank}</span>
+                <div className="relative flex items-center gap-2">
+                  <span className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[11px] font-bold uppercase text-gold">{f.group || "—"}</span>
+                  <span className={`grid h-7 w-7 place-items-center rounded-md border font-display text-sm ${R.text} ${R.soft}`}>{f.rank}</span>
                   <span className={`text-xs font-bold ${R.text}`}>{R.label}</span>
                   <span className="ml-auto grid h-8 w-8 place-items-center rounded-md border border-border text-muted-foreground group-hover:text-gold">↗</span>
                 </div>
-                <div className="mt-5 flex items-center gap-4">
-                  {f.avatar ? <img src={f.avatar} alt={f.name} className="h-14 w-14 rounded-xl object-cover" /> : <div className="grid h-14 w-14 place-items-center rounded-xl bg-gradient-to-br from-gold to-rank-f font-display text-2xl text-primary-foreground">{f.name[0]?.toUpperCase()}</div>}
+                <div className="relative mt-6 flex items-center gap-4">
+                  {f.avatar ? <img src={f.avatar} alt={f.name} className="h-16 w-16 rounded-2xl object-cover shadow-lg" /> : <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-gold to-rank-f font-display text-2xl text-primary-foreground shadow-lg">{f.name[0]?.toUpperCase()}</div>}
                   <div><h3 className="text-xl font-bold">{f.name}</h3><p className="text-sm text-muted-foreground">{f.role || "—"}</p></div>
                 </div>
-                <dl className="mt-5 space-y-2 text-sm">
-                  {[["SteamID", f.steam], ["Discord ID", f.discord], ["Statut", f.blacklisted ? "Blacklisté" : "Non blacklisté"], ["Badges", String(f.badges.length)], ["Avertissements", String(f.warnings.length)]].map(([k, v]) => (
-                    <div key={k} className="flex justify-between border-b border-border pb-2"><dt className="text-muted-foreground">{k}</dt><dd className={k === "Statut" && f.blacklisted ? "font-bold text-rank-s" : "font-medium"}>{v || "—"}</dd></div>
+                <dl className="relative mt-6 grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-border bg-background/40 p-4 text-sm">
+                  {([["Instagram", f.ig ? `@${f.ig.replace(/^@/, "")}` : "", ""], ["Numéro", f.phone, ""], ["Statut", f.blacklisted ? "Blacklisté" : "Non blacklisté", f.blacklisted ? "text-rank-s" : "text-rank-m"], ["Avertissements", String(f.warnings.length), f.warnings.length ? "text-rank-s" : ""]] as const).map(([k, v, c]) => (
+                    <div key={k} className="min-w-0"><dt className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{k}</dt><dd className={`mt-1 truncate font-bold ${c}`}>{v || "—"}</dd></div>
                   ))}
                 </dl>
-                <div className="mt-4 text-sm font-bold text-gold">Consulter la fiche →</div>
+                <div className="relative mt-5 flex items-center justify-between text-sm font-bold"><span>Consulter la fiche</span><span className="grid h-9 w-9 place-items-center rounded-lg bg-gold/15 text-gold transition group-hover:bg-gold group-hover:text-primary-foreground">→</span></div>
               </Link>); })}
           </div>
         </div>

@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
 
 export const RANKS = {
-  E: { label: "Exceptionnel", tier: "Légende", text: "text-rank-e", bg: "bg-rank-e", soft: "border-rank-e/50 bg-rank-e/10" },
-  M: { label: "Très bien", tier: "Excellence", text: "text-rank-m", bg: "bg-rank-m", soft: "border-rank-m/50 bg-rank-m/10" },
-  A: { label: "Bien", tier: "Solide", text: "text-rank-a", bg: "bg-rank-a", soft: "border-rank-a/50 bg-rank-a/10" },
-  T: { label: "Neutre", tier: "Neutre", text: "text-rank-t", bg: "bg-rank-t", soft: "border-rank-t/50 bg-rank-t/10" },
-  F: { label: "Médiocre", tier: "Fragile", text: "text-rank-f", bg: "bg-rank-f", soft: "border-rank-f/50 bg-rank-f/10" },
-  S: { label: "Danger / blacklist", tier: "Danger", text: "text-rank-s", bg: "bg-rank-s", soft: "border-rank-s/50 bg-rank-s/10" },
+  E: { label: "Exceptionnel", tier: "Légende", text: "text-rank-e", bg: "bg-rank-e", soft: "border-rank-e/50 bg-rank-e/10", grad: "from-rank-e" },
+  M: { label: "Très bien", tier: "Excellence", text: "text-rank-m", bg: "bg-rank-m", soft: "border-rank-m/50 bg-rank-m/10", grad: "from-rank-m" },
+  A: { label: "Bien", tier: "Solide", text: "text-rank-a", bg: "bg-rank-a", soft: "border-rank-a/50 bg-rank-a/10", grad: "from-rank-a" },
+  T: { label: "Neutre", tier: "Neutre", text: "text-rank-t", bg: "bg-rank-t", soft: "border-rank-t/50 bg-rank-t/10", grad: "from-rank-t" },
+  F: { label: "Médiocre", tier: "Fragile", text: "text-rank-f", bg: "bg-rank-f", soft: "border-rank-f/50 bg-rank-f/10", grad: "from-rank-f" },
+  S: { label: "Danger / blacklist", tier: "Danger", text: "text-rank-s", bg: "bg-rank-s", soft: "border-rank-s/50 bg-rank-s/10", grad: "from-rank-s" },
 } as const;
 export type Rank = keyof typeof RANKS;
 export type Item = { id: string; date: string; title: string; note: string };
 export type Friend = {
-  id: string; name: string; role: string; group: string; steam: string; discord: string;
+  id: string; name: string; role: string; group: string; ig: string; phone: string;
   since: string; rank: Rank; blacklisted: boolean; avatar: string; review: string; remark: string;
   history: Item[]; badges: Item[]; warnings: Item[]; photos: string[];
 };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const blankFriend = (): Friend => ({
-  id: uid(), name: "Nouvel ami", role: "", group: "", steam: "", discord: "", since: "", rank: "T",
+  id: uid(), name: "Nouvel ami", role: "", group: "", ig: "", phone: "", since: "", rank: "T",
   blacklisted: false, avatar: "", review: "", remark: "", history: [], badges: [], warnings: [], photos: [],
 });
 
@@ -32,7 +32,7 @@ const SAMPLE: Friend[] = [
   { ...blankFriend(), id: "mike", name: "Mike Avilso", role: "Connaissance", group: "Foot", rank: "F" },
 ];
 
-const KEY = "mes-amis-fiches-v2";
+const KEY = "mes-amis-fiches-v3";
 const read = (): Friend[] => { try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : SAMPLE; } catch { return SAMPLE; } };
 
 export function useFriends() {

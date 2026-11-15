@@ -88,7 +88,7 @@ function Fiche() {
   const cancel = () => { setDraft(null); setEdit(false); };
   const remove = () => { if (confirm(`Supprimer la fiche de ${f.name} ?`)) { save(list.filter((x) => x.id !== id)); nav({ to: "/" }); } };
 
-  const info: [string, keyof Friend, string?][] = [["Groupe / service", "group"], ["SteamID", "steam"], ["Discord ID", "discord"], ["Ami depuis", "since", "date"]];
+  const info: [string, keyof Friend, string?][] = [["De où", "group"], ["Instagram", "ig"], ["Numéro", "phone", "tel"], ["Ami depuis", "since", "date"]];
 
   return (
     <main className="min-h-screen bg-background pb-24 text-foreground">
@@ -116,8 +116,8 @@ function Fiche() {
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) set({ avatar: await fileToDataUrl(file, 300) }); }} /></>}
             </label>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Fiche validée · {f.group || "Amis"}</p>
-              {edit ? (<div className="mt-2 grid max-w-md gap-2"><input className={`${field} text-2xl font-bold`} value={f.name} onChange={(e) => set({ name: e.target.value })} /><input className={field} placeholder="Rôle (ex : Meilleur pote)" value={f.role} onChange={(e) => set({ role: e.target.value })} />
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Fiche validée · {f.group || "Cercle privé"}</p>
+              {edit ? (<div className="mt-2 grid max-w-md gap-2"><input className={`${field} text-2xl font-bold`} value={f.name} onChange={(e) => set({ name: e.target.value })} /><input className={field} placeholder="Rank (ex : Meilleur pote)" value={f.role} onChange={(e) => set({ role: e.target.value })} />
                 {f.avatar && <button className="w-fit text-xs text-muted-foreground" onClick={() => set({ avatar: "" })}>Retirer la photo</button>}</div>)
                 : (<><h1 className="text-5xl font-bold">{f.name}</h1><p className="mt-1 text-muted-foreground">{f.role || "—"}</p></>)}
             </div>
