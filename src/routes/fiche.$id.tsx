@@ -161,7 +161,7 @@ function Fiche() {
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) set({ avatar: await fileToDataUrl(file, 300) }); }} /></>}
             </label>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Fiche validée · {f.group || "Cercle privé"}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">{f.group || "Cercle privé"}</p>
               {edit ? (<div className="mt-2 grid max-w-md gap-2"><input className={`${field} text-2xl font-bold`} value={f.name} onChange={(e) => set({ name: e.target.value })} /><input className={field} placeholder="Rank (ex : Meilleur pote)" value={f.role} onChange={(e) => set({ role: e.target.value })} />
                 {f.avatar && <button className="w-fit text-xs text-muted-foreground" onClick={() => set({ avatar: "" })}>Retirer la photo</button>}</div>)
                 : (<><h1 className="text-5xl font-bold">{f.name}</h1><p className="mt-1 text-muted-foreground">{f.role || "—"}</p></>)}
@@ -185,7 +185,7 @@ function Fiche() {
           <div className="border-l border-border px-6">
             <div className="text-xs text-muted-foreground">Statut</div>
             {edit ? <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.blacklisted} onChange={(e) => set({ blacklisted: e.target.checked })} />Blacklisté</label>
-              : <div className={`mt-1 font-bold ${f.blacklisted ? "text-rank-s" : "text-rank-m"}`}>{f.blacklisted ? "Blacklisté" : "Fiche validée"}</div>}
+              : <div className={`mt-1 font-bold ${f.blacklisted ? "text-rank-s" : "text-rank-m"}`}>{f.blacklisted ? "Blacklisté" : "Non blacklisté"}</div>}
           </div>
         </div>
 
