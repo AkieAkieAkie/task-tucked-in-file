@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { directoryQuery } from "./directory-query";
+import { saveDirectory } from "./friends.functions";
+import { friendSchema } from "./friend-schema";
 
 export const RANKS = {
   E: { label: "Exceptionnel", tier: "Légende", text: "text-rank-e", bg: "bg-rank-e", soft: "border-rank-e/50 bg-rank-e/10", grad: "from-rank-e" },
@@ -9,14 +14,14 @@ export const RANKS = {
   S: { label: "Danger / blacklist", tier: "Danger", text: "text-rank-s", bg: "bg-rank-s", soft: "border-rank-s/50 bg-rank-s/10", grad: "from-rank-s" },
 } as const;
 export type Rank = keyof typeof RANKS;
-export type Item = { id: string; date: string; title: string; note: string; kind?: "ecrit" | "oral"; until?: string; by?: string };
+export type Item = { id: string; date: string; title: string; note: string; kind?: "ecrit" | "oral" | undefined; until?: string | undefined; by?: string | undefined };
 export const WARN = { ecrit: { label: "Écrit", desc: "grave", text: "text-rank-s", bg: "bg-rank-s", soft: "border-rank-s/40 bg-rank-s/10", bar: "border-l-rank-s" }, oral: { label: "Oral", desc: "léger", text: "text-oral", bg: "bg-oral", soft: "border-oral/40 bg-oral/10", bar: "border-l-oral" } } as const;
 export const today = () => new Date().toISOString().slice(0, 10);
 export const isActive = (w: Item) => !!w.until && w.until >= today();
-export const daysLeft = (w: Item) => Math.round((new Date(w.until!).getTime() - new Date(today()).getTime()) / 864e5);
+export const daysLeft = (w: Item) => w.until ? Math.round((new Date(w.until).getTime() - new Date(today()).getTime()) / 864e5) : 0;
 export type Info = { id: string; label: string; value: string; image: string };
 export type Friend = {
-  infos?: Info[];
+  infos?: Info[] | undefined;
   id: string; name: string; role: string; group: string; ig: string; phone: string;
   since: string; rank: Rank; blacklisted: boolean; avatar: string; review: string; remark: string;
   history: Item[]; badges: Item[]; warnings: Item[]; photos: string[];
@@ -28,28 +33,46 @@ export const blankFriend = (): Friend => ({
   blacklisted: false, avatar: "", review: "", remark: "", history: [], badges: [], warnings: [], photos: [],
 });
 
-const SAMPLE: Friend[] = [
-  { ...blankFriend(), id: "leo", name: "Leo Tek", role: "Meilleur pote", group: "Lycée", since: "2026-09-21", rank: "M",
-    review: "Toujours là quand on a besoin de lui, drôle et fiable. Un vrai pilier du groupe.", remark: "Ami depuis la seconde",
-    history: [{ id: "h1", date: "2026-09-21", title: "Rencontre", note: "En cours de maths" }, { id: "h2", date: "2026-10-17", title: "Premier voyage ensemble", note: "Week-end à la mer" }],
-    badges: [{ id: "b1", date: "2026-10-04", title: "Rookie", note: "" }],
-    warnings: [{ id: "w1", date: "2026-11-10", title: "En retard au ciné", note: "", kind: "oral", until: "2026-12-10", by: "Moi" }] },
-  { ...blankFriend(), id: "aziz", name: "Aziz Nashia", role: "Pote de jeu", group: "Discord", rank: "A" },
-  { ...blankFriend(), id: "mike", name: "Mike Avilso", role: "Connaissance", group: "Foot", rank: "F", warnings: [{ id: "w2", date: "2026-11-14", title: "A balancé un secret", note: "", kind: "ecrit", until: "2026-12-14", by: "Moi" }] },
-];
-
 const KEY = "mes-amis-fiches-v4";
-const read = (): Friend[] => { try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : SAMPLE; } catch { return SAMPLE; } };
 
 export function useFriends() {
-  const [list, setList] = useState<Friend[]>(SAMPLE);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { setList(read()); setReady(true); }, []);
-  const save = (l: Friend[]) => {
-    setList(l);
-    try { localStorage.setItem(KEY, JSON.stringify(l)); } catch { alert("Stockage plein : supprime quelques photos."); }
+  const client = useQueryClient();
+  const { data } = useSuspenseQuery(directoryQuery);
+  const [saving, setSaving] = useState(false);
+  const [local, setLocal] = useState<Friend[]>([]);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(KEY);
+      const parsed = friendSchema.array().safeParse(stored ? JSON.parse(stored) : []);
+      if (parsed.success) setLocal(parsed.data);
+    } catch { /* Keep existing storage untouched if unreadable. */ }
+  }, []);
+  const save = async (l: Friend[], version = data.version) => {
+    if (saving) return false;
+    setSaving(true);
+    try {
+      const result = await saveDirectory({ data: { friends: l, version } });
+      if (!result.ok) {
+        toast.error("Une modification a été faite sur un autre appareil. Annule puis rouvre la fiche avant de réessayer.");
+        await client.invalidateQueries({ queryKey: directoryQuery.queryKey });
+        return false;
+      }
+      client.setQueryData(directoryQuery.queryKey, result.directory);
+      toast.success("Enregistré en ligne");
+      return true;
+    } catch {
+      toast.error("Enregistrement impossible. Vérifie ta connexion et ton accès admin, puis réessaie ; tes modifications restent ouvertes.");
+      return false;
+    } finally { setSaving(false); }
   };
-  return { list, ready, save };
+  const importLocal = async () => {
+    const ids = new Set(data.friends.map((f) => f.id));
+    if (await save([...data.friends, ...local.filter((f) => !ids.has(f.id))])) {
+      setLocal([]);
+      try { localStorage.removeItem(KEY); } catch { /* Import is already safely online. */ }
+    }
+  };
+  return { list: data.friends, ready: true, save, saving, version: data.version, localCount: local.filter((f) => !data.friends.some((x) => x.id === f.id)).length, importLocal };
 }
 
 export function fileToDataUrl(file: File, max = 800): Promise<string> {
@@ -59,7 +82,9 @@ export function fileToDataUrl(file: File, max = 800): Promise<string> {
       const k = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = img.width * k; c.height = img.height * k;
-      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      const context = c.getContext("2d");
+      if (!context) return;
+      context.drawImage(img, 0, 0, c.width, c.height);
       res(c.toDataURL("image/jpeg", 0.8));
     };
     img.src = URL.createObjectURL(file);

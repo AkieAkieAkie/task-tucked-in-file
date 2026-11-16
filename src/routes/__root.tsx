@@ -14,6 +14,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { getAccess } from "../lib/gate.functions";
 import { CodeForm } from "../components/Gate";
+import { directoryQuery } from "../lib/directory-query";
+import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -101,7 +103,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
-  loader: () => getAccess(),
+  loader: async ({ context }) => {
+    const access = await getAccess();
+    if (access.site) await context.queryClient.ensureQueryData(directoryQuery);
+    else context.queryClient.removeQueries({ queryKey: directoryQuery.queryKey });
+    return access;
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -131,6 +138,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster />
     </QueryClientProvider>
   );
 }

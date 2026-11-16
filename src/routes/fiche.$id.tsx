@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { AdminButton, useAccess } from "@/components/Gate";
+import { Button } from "@/components/ui/button";
 import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/fiche/$id")({
@@ -115,10 +116,12 @@ function Fiche() {
   const { admin } = useAccess();
   const edit = Route.useSearch().edit && admin;
   const nav = useNavigate();
-  const { list, ready, save } = useFriends();
+  const { list, ready, save, saving, version } = useFriends();
   const saved = list.find((f) => f.id === id);
   const [draft, setDraft] = useState<Friend | null>(null);
   const [zoom, setZoom] = useState<string | null>(null);
+  const [draftVersion, setDraftVersion] = useState<number | null>(null);
+  const [draftList, setDraftList] = useState<Friend[] | null>(null);
 
   if (!ready) return <main className="min-h-screen bg-background" />;
   if (!saved) return (
@@ -128,12 +131,15 @@ function Fiche() {
   );
 
   const f = edit ? (draft?.id === id ? draft : saved) : saved;
-  const set = (p: Partial<Friend>) => setDraft({ ...f, ...p } as Friend);
+  const set = (p: Partial<Friend>) => {
+    if (!draft || draft.id !== id) { setDraftVersion(version); setDraftList(list); }
+    setDraft({ ...f, ...p } as Friend);
+  };
   const setEdit = (v: boolean) => nav({ to: "/fiche/$id", params: { id }, search: { edit: v }, replace: true });
   const R = RANKS[f.rank];
-  const commit = () => { save(list.map((x) => (x.id === id ? f : x))); setDraft(null); setEdit(false); };
-  const cancel = () => { setDraft(null); setEdit(false); };
-  const remove = () => { if (confirm(`Supprimer la fiche de ${f.name} ?`)) { save(list.filter((x) => x.id !== id)); nav({ to: "/" }); } };
+  const commit = async () => { if (await save((draftList ?? list).map((x) => (x.id === id ? f : x)), draftVersion ?? version)) { setDraft(null); setDraftList(null); setDraftVersion(null); await setEdit(false); } };
+  const cancel = () => { setDraft(null); setDraftList(null); setDraftVersion(null); setEdit(false); };
+  const remove = async () => { if (confirm(`Supprimer la fiche de ${f.name} ?`) && await save(list.filter((x) => x.id !== id))) await nav({ to: "/" }); };
 
   const info: [string, keyof Friend, string?][] = [["De où", "group"], ["Instagram", "ig"], ["Numéro", "phone", "tel"], ["Ami depuis", "since", "date"]];
 
@@ -144,11 +150,11 @@ function Fiche() {
           <Link to="/" className="text-sm font-bold text-gold">← Retour à l'annuaire</Link>
           <div className="flex gap-2">
             {edit ? (<>
-              <button className={btn} onClick={cancel}>Annuler</button>
-              <button className="rounded-lg bg-gold px-5 py-2 text-sm font-bold text-primary-foreground" onClick={commit}>Enregistrer</button>
+               <Button variant="outline" disabled={saving} className={btn} onClick={cancel}>Annuler</Button>
+               <Button disabled={saving} className="rounded-lg bg-gold px-5 py-2 text-sm font-bold text-primary-foreground" onClick={commit}>{saving ? "Enregistrement…" : "Enregistrer"}</Button>
             </>) : !admin ? <AdminButton /> : (<>
               <button className={btn} onClick={() => setEdit(true)}>✎ Modifier</button>
-              <button className={`${btn} hover:border-rank-s hover:text-rank-s`} onClick={remove}>Supprimer</button>
+               <Button variant="outline" disabled={saving} className={`${btn} hover:border-rank-s hover:text-rank-s`} onClick={remove}>Supprimer</Button>
             </>)}
           </div>
         </div>
@@ -162,11 +168,11 @@ function Fiche() {
               {edit && <><span className="absolute inset-0 grid place-items-center rounded-2xl bg-background/70 text-xs font-bold">Changer</span>
                 <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (file) set({ avatar: await fileToDataUrl(file, 300) }); }} /></>}
             </label>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">{f.group || "Cercle privé"}</p>
               {edit ? (<div className="mt-2 grid max-w-md gap-2"><input className={`${field} text-2xl font-bold`} value={f.name} onChange={(e) => set({ name: e.target.value })} /><input className={field} placeholder="Rank (ex : Meilleur pote)" value={f.role} onChange={(e) => set({ role: e.target.value })} />
                 {f.avatar && <button className="w-fit text-xs text-muted-foreground" onClick={() => set({ avatar: "" })}>Retirer la photo</button>}</div>)
-                : (<><h1 className="text-5xl font-bold">{f.name}</h1><p className="mt-1 text-muted-foreground">{f.role || "—"}</p></>)}
+                : (<><h1 className="break-words text-3xl font-bold sm:text-5xl">{f.name}</h1><p className="mt-1 break-words text-muted-foreground">{f.role || "—"}</p></>)}
             </div>
             <div className={`rounded-2xl border px-8 py-4 text-center ${R.soft}`}>
               <p className={`text-xs font-bold uppercase tracking-widest ${R.text}`}>◆ {R.tier}</p>

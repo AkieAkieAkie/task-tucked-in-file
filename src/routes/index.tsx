@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AdminButton, useAccess } from "@/components/Gate";
+import { Button } from "@/components/ui/button";
 import { WARN, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/")({
@@ -22,7 +23,7 @@ const field = "w-full rounded-lg border border-border bg-background px-3 py-2.5 
 const lbl = "mb-1.5 block text-[11px] font-bold uppercase tracking-widest text-muted-foreground";
 
 function Equipe() {
-  const { list, save } = useFriends();
+  const { list, save, saving, localCount, importLocal } = useFriends();
   const { admin } = useAccess();
   const nav = useNavigate();
   const [q, setQ] = useState(""); const [g, setG] = useState(""); const [r, setR] = useState(""); const [st, setSt] = useState("");
@@ -33,7 +34,7 @@ function Equipe() {
   });
   const [showW, setShowW] = useState(false);
   const active = list.flatMap((f) => f.warnings.filter(isActive).map((w) => ({ f, w }))).sort((a, b) => a.w.until!.localeCompare(b.w.until!));
-  const add = () => { const f = blankFriend(); save([f, ...list]); nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
+  const add = async () => { const f = blankFriend(); if (await save([f, ...list])) await nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -54,8 +55,10 @@ function Equipe() {
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Annuaire</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div><h2 className="text-4xl font-bold">Les fiches</h2><p className="mt-1 text-muted-foreground">{shown.length} résultats</p></div>
-            <div className="flex gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <button onClick={add} className="rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">+ Ajouter un ami</button>}</div>
+            <div className="flex flex-wrap gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <Button disabled={saving} onClick={add} className="h-auto rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">{saving ? "Enregistrement…" : "+ Ajouter un ami"}</Button>}</div>
           </div>
+
+          {admin && localCount > 0 && <div className="mt-5 flex flex-wrap items-center gap-3 border-l-2 border-gold pl-4"><p className="text-sm text-muted-foreground">{localCount} fiche(s) conservée(s) sur cet appareil.</p><Button variant="outline" disabled={saving} onClick={importLocal}>Importer les fiches de cet appareil</Button></div>}
 
           <div className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[2fr_1fr_1fr_1fr]">
             <div><label className={lbl}>Rechercher une fiche</label><input className={field} placeholder="Nom, Instagram, numéro ou rank" value={q} onChange={(e) => setQ(e.target.value)} /></div>
