@@ -9,7 +9,7 @@ export const friendSchema = z.object({
   since: z.string(), rank: z.enum(["E", "M", "A", "T", "F", "S"]), blacklisted: z.boolean(),
   avatar: z.string(), review: z.string(), remark: z.string(), history: z.array(item), badges: z.array(item),
   warnings: z.array(item), photos: z.array(z.string()),
-  infos: z.array(z.object({ id: z.string(), label: z.string(), value: z.string(), image: z.string() })).optional(),
+  infos: z.array(z.object({ id: z.string(), label: z.string(), value: z.string(), image: z.string(), date: z.string().optional() })).optional(),
 });
 export const saveDirectorySchema = z.object({
   friends: z.array(friendSchema), version: z.number().int().nonnegative(),

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { AdminButton, useAccess } from "@/components/Gate";
 import { Button } from "@/components/ui/button";
-import { WARN, isActive, RANKS, fileToDataUrl, fmt, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
+import { WARN, isActive, RANKS, fileToDataUrl, fmt, infoAgeDays, infoIsOld, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/fiche/$id")({
   validateSearch: (s: Record<string, unknown>) => ({ edit: s["edit"] === true || s["edit"] === "true" }),
@@ -96,11 +96,20 @@ function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: bool
               <div className="grid flex-1 gap-2">
                 <div className="flex gap-2"><input className={field} placeholder="Titre (ex : Snapchat)" value={it.label} onChange={(e) => upd(it.id, { label: e.target.value })} /><button onClick={() => onChange(items.filter((x) => x.id !== it.id))} className="px-2 text-rank-s">✕</button></div>
                 <textarea rows={2} className={field} placeholder="Info" value={it.value} onChange={(e) => upd(it.id, { value: e.target.value })} />
+                <label className="text-[11px] text-muted-foreground">Datée du (optionnel)<input type="date" className={`${field} mt-1`} value={it.date ?? ""} onChange={(e) => upd(it.id, { date: e.target.value })} /></label>
               </div>
             ) : (
               <div className="min-w-0">
                 <div className="text-[11px] font-bold uppercase tracking-widest text-gold">{it.label || "Info"}</div>
                 <div className="mt-0.5 whitespace-pre-wrap break-words text-sm font-medium">{it.value || "—"}</div>
+                {it.date && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+                    <span className="text-muted-foreground">Datée du {fmt(it.date)}</span>
+                    {infoIsOld(it)
+                      ? <span className="rounded-full border border-oral/40 bg-oral/10 px-2 py-0.5 uppercase text-oral">à revérifier · {infoAgeDays(it)} j</span>
+                      : <span className="rounded-full border border-rank-m/40 bg-rank-m/10 px-2 py-0.5 uppercase text-rank-m">récente</span>}
+                  </div>
+                )}
               </div>
             )}
           </div>

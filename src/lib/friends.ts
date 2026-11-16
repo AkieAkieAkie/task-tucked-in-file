@@ -19,7 +19,9 @@ export const WARN = { ecrit: { label: "Écrit", desc: "grave", text: "text-rank-
 export const today = () => new Date().toISOString().slice(0, 10);
 export const isActive = (w: Item) => !!w.until && w.until >= today();
 export const daysLeft = (w: Item) => w.until ? Math.round((new Date(w.until).getTime() - new Date(today()).getTime()) / 864e5) : 0;
-export type Info = { id: string; label: string; value: string; image: string };
+export type Info = { id: string; label: string; value: string; image: string; date?: string | undefined };
+export const infoAgeDays = (i: Info) => i.date ? Math.round((Date.now() - new Date(i.date).getTime()) / 864e5) : null;
+export const infoIsOld = (i: Info) => { const d = infoAgeDays(i); return d !== null && d > 180; };
 export type Friend = {
   infos?: Info[] | undefined;
   id: string; name: string; role: string; group: string; ig: string; phone: string;
