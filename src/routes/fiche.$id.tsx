@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useSessionLifecycle } from "@/lib/session-lifecycle";
 import { AdminButton, useAccess } from "@/components/Gate";
 import { Button } from "@/components/ui/button";
 import { WARN, isActive, RANKS, fileToDataUrl, fmt, infoAgeDays, infoIsOld, uid, useFriends, type Friend, type Info, type Item, type Rank } from "@/lib/friends";
@@ -185,11 +186,55 @@ function Fiche() {
   const edit = Route.useSearch().edit && admin;
   const nav = useNavigate();
   const { list, ready, save, saving, version } = useFriends();
+  const lifecycle = useSessionLifecycle();
+  const recovered = lifecycle.drafts.get(id);
   const saved = list.find((f) => f.id === id);
-  const [draft, setDraft] = useState<Friend | null>(null);
+  const [draft, setDraft] = useState<Friend | null>(recovered?.friend ?? null);
   const [zoom, setZoom] = useState<string | null>(null);
-  const [draftVersion, setDraftVersion] = useState<number | null>(null);
-  const [draftList, setDraftList] = useState<Friend[] | null>(null);
+  const [draftVersion, setDraftVersion] = useState<number | null>(recovered?.version ?? null);
+  const [draftList, setDraftList] = useState<Friend[] | null>(recovered?.list ?? null);
+  const latest = useRef({ draft, draftList, draftVersion, save, edit });
+  latest.current = { draft, draftList, draftVersion, save, edit };
+  const pending = useRef<Promise<boolean> | null>(null);
+  const autosave = useRef<() => Promise<boolean>>(async () => true);
+  autosave.current = async () => {
+    if (pending.current) {
+      await pending.current;
+      return autosave.current();
+    }
+    const current = latest.current;
+    if (!current.edit || !current.draft || !current.draftList || current.draftVersion === null) return true;
+    const snapshot = current.draft;
+    const operation = current.save(current.draftList.map((x) => x.id === snapshot.id ? snapshot : x), current.draftVersion);
+    pending.current = operation;
+    const ok = await operation;
+    pending.current = null;
+    if (ok) {
+      const nextList = current.draftList.map((x) => x.id === snapshot.id ? snapshot : x);
+      const nextVersion = current.draftVersion + 1;
+      if (latest.current.draft === snapshot) {
+        latest.current = { ...latest.current, draft: null, draftList: null, draftVersion: null };
+        lifecycle.drafts.delete(id);
+        setDraft(null); setDraftList(null); setDraftVersion(null);
+      } else {
+        latest.current = { ...latest.current, draftList: nextList, draftVersion: nextVersion };
+        setDraftList(nextList); setDraftVersion(nextVersion);
+        const newer = latest.current.draft;
+        if (newer) lifecycle.drafts.set(id, { friend: newer, list: nextList, version: nextVersion });
+      }
+    }
+    return ok;
+  };
+  useEffect(() => {
+    const flush = () => autosave.current();
+    lifecycle.saves.add(flush);
+    return () => { lifecycle.saves.delete(flush); };
+  }, [lifecycle]);
+  useEffect(() => {
+    if (!draft || !edit) return;
+    const timer = window.setTimeout(() => { void autosave.current(); }, 1000);
+    return () => clearTimeout(timer);
+  }, [draft, edit]);
 
   if (!ready) return <main className="min-h-screen bg-background" />;
   if (!saved) return (
@@ -201,12 +246,14 @@ function Fiche() {
   const f = edit ? (draft?.id === id ? draft : saved) : saved;
   const set = (p: Partial<Friend>) => {
     if (!draft || draft.id !== id) { setDraftVersion(version); setDraftList(list); }
-    setDraft({ ...f, ...p } as Friend);
+    const next = { ...f, ...p } as Friend;
+    lifecycle.drafts.set(id, { friend: next, list: draftList ?? list, version: draftVersion ?? version });
+    setDraft(next);
   };
   const setEdit = (v: boolean) => nav({ to: "/fiche/$id", params: { id }, search: { edit: v }, replace: true });
   const R = RANKS[f.rank];
-  const commit = async () => { if (await save((draftList ?? list).map((x) => (x.id === id ? f : x)), draftVersion ?? version)) { setDraft(null); setDraftList(null); setDraftVersion(null); await setEdit(false); } };
-  const cancel = () => { setDraft(null); setDraftList(null); setDraftVersion(null); setEdit(false); };
+  const commit = async () => { if (await autosave.current()) await setEdit(false); };
+  const cancel = () => { lifecycle.drafts.delete(id); setDraft(null); setDraftList(null); setDraftVersion(null); setEdit(false); };
   const remove = async () => { if (confirm(`Supprimer la fiche de ${f.name} ?`) && await save(list.filter((x) => x.id !== id))) await nav({ to: "/" }); };
 
   const info: [string, keyof Friend, string?][] = [["De où", "group"], ["Instagram", "ig"], ["Numéro", "phone", "tel"], ["Ami depuis", "since", "date"], ["Anniversaire", "birthday", "date"]];

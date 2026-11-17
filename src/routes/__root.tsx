@@ -8,7 +8,7 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -16,6 +16,8 @@ import { getAccess } from "../lib/gate.functions";
 import { CodeForm } from "../components/Gate";
 import { directoryQuery } from "../lib/directory-query";
 import { Toaster } from "../components/ui/sonner";
+import { SessionLifecycleProvider, useSessionLifecycle } from "../lib/session-lifecycle";
+import { SessionExpiry } from "../components/SessionExpiry";
 
 function NotFoundComponent() {
   return (
@@ -133,12 +135,20 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
+  return <SessionLifecycleProvider><GatedContent /></SessionLifecycleProvider>;
+}
+
+function GatedContent() {
   const { queryClient } = Route.useRouteContext();
-  const { site } = Route.useLoaderData();
-  if (!site) return <main className="grid min-h-screen place-items-center bg-background p-4"><CodeForm level="site" kicker="Cercle privé" title="Code de connexion" /></main>;
+  const { site, expiresAt, serverNow } = Route.useLoaderData();
+  const [closedSession, setClosedSession] = useState<number | null>(null);
+  const lifecycle = useSessionLifecycle();
+  const expire = useCallback(() => setClosedSession(expiresAt), [expiresAt]);
+  if (!site || (expiresAt !== null && closedSession === expiresAt)) return <main className="grid min-h-screen place-items-center bg-background p-4"><div className="w-full max-w-sm space-y-4">{closedSession !== null && <p role="status" className="text-center text-sm text-muted-foreground">Session fermée automatiquement.{lifecycle.drafts.size > 0 ? " Une modification non enregistrée est conservée dans cet onglet : reconnecte-toi pour réessayer." : " Reconnecte-toi pour continuer."}</p>}<CodeForm level="site" kicker="Cercle privé" title="Code de connexion" /></div></main>;
 
   return (
     <QueryClientProvider client={queryClient}>
+      {expiresAt !== null && <SessionExpiry expiresAt={expiresAt} serverNow={serverNow} onExpire={expire} />}
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster />

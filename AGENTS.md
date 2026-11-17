@@ -30,6 +30,8 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - Site access and admin editing are gated by server-checked codes (SITE_PASSWORD, ADMIN_PASSWORD env) stored in an encrypted session cookie; codes never ship to the browser.
+- Gate session deadlines are checked through gate.server.ts on every private read/write and align to UTC quarter hours; browser timers only hide expired views, so sleeping/offline devices cannot extend access.
+- Pending friend edits autosave with version checks and stay only in the in-memory session lifecycle until saved; why: expiration must not discard failed/conflicting edits or persist private drafts outside the gate.
 - Shared friend data uses a private database singleton with version-checked writes through cookie-gated server functions; direct browser table access is denied because shared codes do not establish account identities.
 - Directory queries refresh on focus and every 15 seconds while visible; editing snapshots retain their original version to reject stale overwrites, and legacy device records import explicitly without replacing shared IDs.
 - Server data access goes through src/lib/store.server.ts: self-hosted PostgreSQL when DATABASE_URL is set, Lovable Cloud otherwise; why: the app can be self-hosted on a VPS without the Cloud service key. Deploy files live in deploy/.

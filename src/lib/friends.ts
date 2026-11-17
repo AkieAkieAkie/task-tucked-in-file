@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { directoryQuery } from "./directory-query";
@@ -41,6 +41,7 @@ export function useFriends() {
   const client = useQueryClient();
   const { data } = useSuspenseQuery(directoryQuery);
   const [saving, setSaving] = useState(false);
+  const inFlight = useRef<Promise<boolean> | null>(null);
   const [local, setLocal] = useState<Friend[]>([]);
   useEffect(() => {
     try {
@@ -49,9 +50,10 @@ export function useFriends() {
       if (parsed.success) setLocal(parsed.data);
     } catch { /* Keep existing storage untouched if unreadable. */ }
   }, []);
-  const save = async (l: Friend[], version = data.version) => {
-    if (saving) return false;
+  const save = (l: Friend[], version = data.version): Promise<boolean> => {
+    if (inFlight.current) return inFlight.current;
     setSaving(true);
+    const operation = (async () => {
     try {
       const result = await saveDirectory({ data: { friends: l, version } });
       if (!result.ok) {
@@ -65,7 +67,10 @@ export function useFriends() {
     } catch {
       toast.error("Enregistrement impossible. Vérifie ta connexion et ton accès admin, puis réessaie ; tes modifications restent ouvertes.");
       return false;
-    } finally { setSaving(false); }
+    } finally { setSaving(false); inFlight.current = null; }
+    })();
+    inFlight.current = operation;
+    return operation;
   };
   const importLocal = async () => {
     const ids = new Set(data.friends.map((f) => f.id));
