@@ -23,8 +23,8 @@ async function hashCode(code: string, salt: string) {
 }
 
 async function checkCode(level: "site" | "admin", code: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin.from("access_codes").select("salt, hash").eq("level", level).maybeSingle();
+  const { readCode } = await import("./store.server");
+  const data = await readCode(level);
   if (data) return safeEqual(await hashCode(code, data.salt), data.hash);
   const expected = level === "site" ? process.env['SITE_PASSWORD'] : process.env['ADMIN_PASSWORD'];
   return !!expected && safeEqual(code, expected);
@@ -39,9 +39,10 @@ export const changeCode = createServerFn({ method: "POST" })
     if (next.length < 4 || next.length > 64) return { ok: false as const, error: "Le nouveau code doit faire entre 4 et 64 caractères." };
     if (!(await checkCode("admin", String(data.current)))) return { ok: false as const, error: "Code admin actuel incorrect." };
     const salt = crypto.randomUUID();
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("access_codes").upsert({ level: data.level, salt, hash: await hashCode(next, salt), updated_at: new Date().toISOString() });
-    if (error) return { ok: false as const, error: "Enregistrement impossible, réessaie." };
+    const { writeCode } = await import("./store.server");
+    try { await writeCode(data.level, salt, await hashCode(next, salt)); } catch {
+      return { ok: false as const, error: "Enregistrement impossible, réessaie." };
+    }
     return { ok: true as const };
   });
 

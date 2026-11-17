@@ -4,6 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { AdminButton, useAccess } from "@/components/Gate";
 import { Button } from "@/components/ui/button";
 import { WARN, nextBirthday, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
+import { friendSchema } from "@/lib/friend-schema";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,6 +36,19 @@ function Equipe() {
   const [showW, setShowW] = useState(false);
   const active = list.flatMap((f) => f.warnings.filter(isActive).map((w) => ({ f, w }))).sort((a, b) => a.w.until!.localeCompare(b.w.until!));
   const bdays = list.map((f) => ({ f, b: nextBirthday(f.birthday) })).filter((x): x is { f: typeof x.f; b: NonNullable<typeof x.b> } => !!x.b && x.b.days <= 30).sort((a, b) => a.b.days - b.b.days);
+  const exportAll = () => {
+    const blob = new Blob([JSON.stringify({ friends: list }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = `cercle-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  };
+  const importAll = async (file?: File) => {
+    if (!file) return;
+    try {
+      const parsed = friendSchema.array().parse(JSON.parse(await file.text()).friends);
+      if (confirm(`Remplacer les ${list.length} fiches actuelles par les ${parsed.length} fiches du fichier ?`)) await save(parsed);
+    } catch { alert("Fichier de sauvegarde invalide."); }
+  };
   const add = async () => { const f = blankFriend(); if (await save([f, ...list])) await nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
 
   return (
@@ -59,6 +73,7 @@ function Equipe() {
             <div className="flex w-full flex-wrap gap-3 sm:w-auto"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <Button disabled={saving} onClick={add} className="h-auto rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">{saving ? "Enregistrement…" : "+ Ajouter un ami"}</Button>}</div>
           </div>
 
+          {admin && <div className="mt-5 flex flex-wrap gap-2 text-sm"><Button variant="outline" onClick={exportAll}>⇩ Sauvegarder toutes les fiches</Button><label className="inline-flex cursor-pointer items-center rounded-md border border-input px-4 py-2 font-medium hover:border-gold">⇧ Restaurer une sauvegarde<input type="file" accept="application/json" className="hidden" onChange={(e) => importAll(e.target.files?.[0])} /></label></div>}
           {admin && localCount > 0 && <div className="mt-5 flex flex-wrap items-center gap-3 border-l-2 border-gold pl-4"><p className="text-sm text-muted-foreground">{localCount} fiche(s) conservée(s) sur cet appareil.</p><Button variant="outline" disabled={saving} onClick={importLocal}>Importer les fiches de cet appareil</Button></div>}
 
           {bdays.length > 0 && <div className="mt-6 rounded-xl border border-gold/40 bg-gold/5 p-4 animate-in fade-in slide-in-from-top-2">
