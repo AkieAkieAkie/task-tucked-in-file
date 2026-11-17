@@ -2,11 +2,22 @@
 type Dir = { friends: unknown; version: number } | null;
 type Code = { salt: string; hash: string } | null;
 
+import { databaseHint } from "./config-check";
+
 let sqlClient: any;
 async function pg() {
   const url = process.env["DATABASE_URL"];
   if (!url) return null;
-  if (!sqlClient) { const { default: postgres } = await import("postgres"); sqlClient = postgres(url, { max: 5 }); }
+  if (!sqlClient) {
+    const { default: postgres } = await import("postgres");
+    const raw: any = postgres(url, { max: 5 });
+    // Log the real driver error server-side, surface only a French hint to the page.
+    sqlClient = Object.assign(
+      (strings: TemplateStringsArray, ...values: unknown[]): Promise<any[]> =>
+        Promise.resolve(raw(strings, ...values)).catch((error: unknown) => { console.error(error); throw new Error(databaseHint(error)); }),
+      { json: raw.json.bind(raw) },
+    );
+  }
   return sqlClient;
 }
 const cloud = async () => (await import("@/integrations/supabase/client.server")).supabaseAdmin;
