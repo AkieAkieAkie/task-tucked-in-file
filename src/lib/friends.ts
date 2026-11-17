@@ -25,7 +25,7 @@ export const infoIsOld = (i: Info) => { const d = infoAgeDays(i); return d !== n
 export type Friend = {
   infos?: Info[] | undefined;
   id: string; name: string; role: string; group: string; ig: string; phone: string;
-  since: string; rank: Rank; blacklisted: boolean; avatar: string; review: string; remark: string;
+  since: string; birthday?: string | undefined; rank: Rank; blacklisted: boolean; avatar: string; review: string; remark: string;
   history: Item[]; badges: Item[]; warnings: Item[]; photos: string[];
 };
 
@@ -94,3 +94,13 @@ export function fileToDataUrl(file: File, max = 800): Promise<string> {
 }
 
 export const fmt = (d: string) => (d ? new Date(d).toLocaleDateString("fr-FR") : "—");
+
+export const nextBirthday = (b?: string) => {
+  if (!b) return null;
+  const [, m, d] = b.split("-").map(Number);
+  if (!m || !d) return null;
+  const now = new Date(today());
+  let n = new Date(now.getFullYear(), m - 1, d);
+  if (n < now) n = new Date(now.getFullYear() + 1, m - 1, d);
+  return { days: Math.round((n.getTime() - now.getTime()) / 864e5), age: n.getFullYear() - Number(b.slice(0, 4)) };
+};

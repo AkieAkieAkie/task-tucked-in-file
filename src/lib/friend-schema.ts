@@ -6,7 +6,7 @@ const item = z.object({
 });
 export const friendSchema = z.object({
   id: z.string().min(1), name: z.string(), role: z.string(), group: z.string(), ig: z.string(), phone: z.string(),
-  since: z.string(), rank: z.enum(["E", "M", "A", "T", "F", "S"]), blacklisted: z.boolean(),
+  since: z.string(), birthday: z.string().optional(), rank: z.enum(["E", "M", "A", "T", "F", "S"]), blacklisted: z.boolean(),
   avatar: z.string(), review: z.string(), remark: z.string(), history: z.array(item), badges: z.array(item),
   warnings: z.array(item), photos: z.array(z.string()),
   infos: z.array(z.object({ id: z.string(), label: z.string(), value: z.string(), image: z.string(), date: z.string().optional() })).optional(),

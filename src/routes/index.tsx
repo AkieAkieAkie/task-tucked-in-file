@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AdminButton, useAccess } from "@/components/Gate";
 import { Button } from "@/components/ui/button";
-import { WARN, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
+import { WARN, nextBirthday, daysLeft, fmt, isActive, RANKS, blankFriend, useFriends, type Rank } from "@/lib/friends";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,14 +34,15 @@ function Equipe() {
   });
   const [showW, setShowW] = useState(false);
   const active = list.flatMap((f) => f.warnings.filter(isActive).map((w) => ({ f, w }))).sort((a, b) => a.w.until!.localeCompare(b.w.until!));
+  const bdays = list.map((f) => ({ f, b: nextBirthday(f.birthday) })).filter((x): x is { f: typeof x.f; b: NonNullable<typeof x.b> } => !!x.b && x.b.days <= 30).sort((a, b) => a.b.days - b.b.days);
   const add = async () => { const f = blankFriend(); if (await save([f, ...list])) await nav({ to: "/fiche/$id", params: { id: f.id }, search: { edit: true } }); };
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-8 px-6 py-20">
+      <section className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-8 px-4 py-12 animate-in fade-in slide-in-from-bottom-4 duration-700 sm:px-6 sm:py-20">
         <div>
           <p className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-gold"><span className="h-2 w-2 rounded-full bg-rank-m" />Archives publiques validées</p>
-          <h1 className="font-display text-6xl leading-[0.95] md:text-8xl">Cercle<br /><span className="text-gold">privé.</span></h1>
+          <h1 className="font-display text-5xl sm:text-6xl leading-[0.95] md:text-8xl">Cercle<br /><span className="text-gold">privé.</span></h1>
         </div>
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="font-display text-5xl text-gold">{list.length}</div>
@@ -51,14 +52,22 @@ function Equipe() {
       </section>
 
       <section className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-6 py-16">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">Annuaire</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div><h2 className="text-4xl font-bold">Les fiches</h2><p className="mt-1 text-muted-foreground">{shown.length} résultats</p></div>
-            <div className="flex flex-wrap gap-3"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <Button disabled={saving} onClick={add} className="h-auto rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">{saving ? "Enregistrement…" : "+ Ajouter un ami"}</Button>}</div>
+            <div className="flex w-full flex-wrap gap-3 sm:w-auto"><button onClick={() => setShowW(true)} className="flex items-center gap-2 rounded-lg border border-rank-s/40 bg-rank-s/10 px-4 py-3 text-sm font-bold">Avertissements actifs <span className="grid h-6 min-w-6 place-items-center rounded-full bg-rank-s px-1.5 text-xs text-foreground">{active.length}</span></button><AdminButton />{admin && <Button disabled={saving} onClick={add} className="h-auto rounded-lg bg-gold px-5 py-3 font-bold text-primary-foreground">{saving ? "Enregistrement…" : "+ Ajouter un ami"}</Button>}</div>
           </div>
 
           {admin && localCount > 0 && <div className="mt-5 flex flex-wrap items-center gap-3 border-l-2 border-gold pl-4"><p className="text-sm text-muted-foreground">{localCount} fiche(s) conservée(s) sur cet appareil.</p><Button variant="outline" disabled={saving} onClick={importLocal}>Importer les fiches de cet appareil</Button></div>}
+
+          {bdays.length > 0 && <div className="mt-6 rounded-xl border border-gold/40 bg-gold/5 p-4 animate-in fade-in slide-in-from-top-2">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">🎂 Anniversaires à venir</p>
+            <div className="mt-3 flex flex-wrap gap-2">{bdays.map(({ f, b }) => (
+              <Link key={f.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} className={`rounded-full border px-3 py-1.5 text-sm font-bold transition hover:border-gold ${b.days === 0 ? "border-gold bg-gold text-primary-foreground" : "border-border bg-background/40"}`}>
+                {f.name} · {b.days === 0 ? "aujourd'hui !" : b.days === 1 ? "demain" : `dans ${b.days} j`}{b.age > 0 && b.age < 150 ? ` · ${b.age} ans` : ""}
+              </Link>))}</div>
+          </div>}
 
           <div className="mt-6 grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-[2fr_1fr_1fr_1fr]">
             <div><label className={lbl}>Rechercher une fiche</label><input className={field} placeholder="Nom, Instagram, numéro ou rank" value={q} onChange={(e) => setQ(e.target.value)} /></div>
@@ -68,19 +77,19 @@ function Equipe() {
           </div>
 
           <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {shown.map((f) => { const R = RANKS[f.rank]; return (
-              <Link key={f.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-lg transition hover:-translate-y-1 hover:border-gold/50">
+            {shown.map((f, i) => { const R = RANKS[f.rank]; return (
+              <Link key={f.id} to="/fiche/$id" params={{ id: f.id }} search={{ edit: false }} style={{ animationDelay: `${Math.min(i, 12) * 50}ms` }} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-lg animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500 transition sm:p-6 hover:-translate-y-1 hover:border-gold/50">
                 <div className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${R.grad} to-transparent`} />
                 <span className={`pointer-events-none absolute -right-2 top-10 select-none font-display text-9xl leading-none opacity-[0.06] ${R.text}`}>{f.rank}</span>
-                <div className="relative flex items-center gap-2">
-                  <span className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[11px] font-bold uppercase text-gold">{f.group || "—"}</span>
+                <div className="relative flex flex-wrap items-center gap-2">
+                  <span className="max-w-[45%] truncate rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[11px] font-bold uppercase text-gold">{f.group || "—"}</span>
                   <span className={`grid h-7 w-7 place-items-center rounded-md border font-display text-sm ${R.text} ${R.soft}`}>{f.rank}</span>
                   <span className={`text-xs font-bold ${R.text}`}>{R.label}</span>
                   <span className="ml-auto grid h-8 w-8 place-items-center rounded-md border border-border text-muted-foreground group-hover:text-gold">↗</span>
                 </div>
                 <div className="relative mt-6 flex items-center gap-4">
                   {f.avatar ? <img src={f.avatar} alt={f.name} className="h-16 w-16 rounded-2xl object-cover shadow-lg" /> : <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-gold to-rank-f font-display text-2xl text-primary-foreground shadow-lg">{f.name[0]?.toUpperCase()}</div>}
-                  <div><h3 className="text-xl font-bold">{f.name}</h3><p className="text-sm text-muted-foreground">{f.role || "—"}</p></div>
+                  <div className="min-w-0"><h3 className="break-words text-xl font-bold">{f.name}</h3><p className="truncate text-sm text-muted-foreground">{f.role || "—"}</p></div>
                 </div>
                 <dl className="relative mt-6 grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-border bg-background/40 p-4 text-sm">
                   {([["Instagram", f.ig ? `@${f.ig.replace(/^@/, "")}` : "", ""], ["Numéro", f.phone, ""], ["Statut", f.blacklisted ? "Blacklisté" : "Non blacklisté", f.blacklisted ? "text-rank-s" : "text-rank-m"], ["Avertissements", `${f.warnings.filter(isActive).length} actif${f.warnings.filter(isActive).length > 1 ? "s" : ""}`, f.warnings.some((w) => isActive(w) && w.kind !== "oral") ? "text-rank-s" : f.warnings.some(isActive) ? "text-oral" : ""]] as const).map(([k, v, c]) => (
@@ -95,7 +104,7 @@ function Equipe() {
 
       {showW && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background/80 p-4 backdrop-blur-sm" onClick={() => setShowW(false)}>
-          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-rank-s/30 bg-card" onClick={(e) => e.stopPropagation()}>
+          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col animate-in fade-in zoom-in-95 overflow-hidden rounded-2xl border border-rank-s/30 bg-card" onClick={(e) => e.stopPropagation()}>
             <div className="relative bg-gradient-to-br from-rank-s/15 to-transparent p-7">
               <button onClick={() => setShowW(false)} className="absolute right-5 top-5 grid h-9 w-9 place-items-center rounded-lg border border-border">✕</button>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-rank-s">Cercle actuellement actif</p>

@@ -16,6 +16,35 @@ function safeEqual(a: string, b: string) {
   return diff === 0;
 }
 
+async function hashCode(code: string, salt: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode(salt), iterations: 100_000 }, key, 256);
+  return Array.from(new Uint8Array(bits), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function checkCode(level: "site" | "admin", code: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.from("access_codes").select("salt, hash").eq("level", level).maybeSingle();
+  if (data) return safeEqual(await hashCode(code, data.salt), data.hash);
+  const expected = level === "site" ? process.env['SITE_PASSWORD'] : process.env['ADMIN_PASSWORD'];
+  return !!expected && safeEqual(code, expected);
+}
+
+export const changeCode = createServerFn({ method: "POST" })
+  .validator((d: { level: "site" | "admin"; current: string; next: string }) => d)
+  .handler(async ({ data }) => {
+    const s = await useSession<GateSession>(cfg());
+    if (!s.data.site || !s.data.admin) return { ok: false as const, error: "Accès admin requis." };
+    const next = String(data.next);
+    if (next.length < 4 || next.length > 64) return { ok: false as const, error: "Le nouveau code doit faire entre 4 et 64 caractères." };
+    if (!(await checkCode("admin", String(data.current)))) return { ok: false as const, error: "Code admin actuel incorrect." };
+    const salt = crypto.randomUUID();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("access_codes").upsert({ level: data.level, salt, hash: await hashCode(next, salt), updated_at: new Date().toISOString() });
+    if (error) return { ok: false as const, error: "Enregistrement impossible, réessaie." };
+    return { ok: true as const };
+  });
+
 export const getAccess = createServerFn({ method: "GET" }).handler(async () => {
   const s = await useSession<GateSession>(cfg());
   return { site: !!s.data.site, admin: !!s.data.site && !!s.data.admin };
@@ -24,8 +53,7 @@ export const getAccess = createServerFn({ method: "GET" }).handler(async () => {
 export const unlock = createServerFn({ method: "POST" })
   .validator((d: { level: "site" | "admin"; code: string }) => d)
   .handler(async ({ data }) => {
-    const expected = data.level === "site" ? process.env['SITE_PASSWORD'] : process.env['ADMIN_PASSWORD'];
-    if (!expected || !safeEqual(String(data.code), expected)) return { ok: false };
+    if (!(await checkCode(data.level, String(data.code)))) return { ok: false };
     const s = await useSession<GateSession>(cfg());
     await s.update({ ...s.data, [data.level]: true, ...(data.level === "admin" ? { site: true } : {}) });
     return { ok: true };

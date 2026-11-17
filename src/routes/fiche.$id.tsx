@@ -25,7 +25,7 @@ const btn = "rounded-lg border border-border px-4 py-2 text-sm font-bold transit
 
 function Section({ kicker, title, children, watermark }: { kicker: string; title: string; children: ReactNode; watermark?: string }) {
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-8">
+    <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-8">
       {watermark && <span className="pointer-events-none absolute -right-4 -top-6 select-none font-display text-9xl text-foreground/5">{watermark}</span>}
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold">{kicker}</p>
       <h2 className="mb-6 mt-1 text-2xl font-bold">{title}</h2>
@@ -209,19 +209,20 @@ function Fiche() {
   const cancel = () => { setDraft(null); setDraftList(null); setDraftVersion(null); setEdit(false); };
   const remove = async () => { if (confirm(`Supprimer la fiche de ${f.name} ?`) && await save(list.filter((x) => x.id !== id))) await nav({ to: "/" }); };
 
-  const info: [string, keyof Friend, string?][] = [["De où", "group"], ["Instagram", "ig"], ["Numéro", "phone", "tel"], ["Ami depuis", "since", "date"]];
+  const info: [string, keyof Friend, string?][] = [["De où", "group"], ["Instagram", "ig"], ["Numéro", "phone", "tel"], ["Ami depuis", "since", "date"], ["Anniversaire", "birthday", "date"]];
 
   return (
     <main className="min-h-screen bg-background pb-24 text-foreground">
-      <div className="mx-auto max-w-6xl px-6 pt-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto max-w-6xl px-4 pt-10 animate-in fade-in slide-in-from-bottom-4 duration-500 sm:px-6">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <Link to="/" className="text-sm font-bold text-gold">← Retour à l'annuaire</Link>
           <div className="flex gap-2">
             {edit ? (<>
                <Button variant="outline" disabled={saving} className={btn} onClick={cancel}>Annuler</Button>
                <Button disabled={saving} className="rounded-lg bg-gold px-5 py-2 text-sm font-bold text-primary-foreground" onClick={commit}>{saving ? "Enregistrement…" : "Enregistrer"}</Button>
-            </>) : !admin ? <AdminButton /> : (<>
+            </>) : !admin ? <><button className={btn} onClick={() => window.print()}>⇩ Exporter</button><AdminButton /></> : (<>
               <button className={btn} onClick={() => setEdit(true)}>✎ Modifier</button>
+              <button className={btn} onClick={() => window.print()}>⇩ Exporter</button>
                <Button variant="outline" disabled={saving} className={`${btn} hover:border-rank-s hover:text-rank-s`} onClick={remove}>Supprimer</Button>
             </>)}
           </div>
@@ -250,15 +251,15 @@ function Fiche() {
           </div>
         </header>
 
-        <div className="mt-6 grid gap-y-6 border-b border-border pb-8 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-6 grid gap-y-6 border-b border-border pb-8 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {info.map(([l, k, t]) => (
-            <div key={k} className="border-l border-border px-6">
+            <div key={k} className="min-w-0 border-l border-border px-4 sm:px-6">
               <div className="text-xs text-muted-foreground">{l}</div>
-              {edit ? <input type={t ?? "text"} className={`${field} mt-1`} value={String(f[k])} onChange={(e) => set({ [k]: e.target.value })} />
-                : <div className="mt-1 font-bold">{t === "date" ? fmt(String(f[k])) : String(f[k]) || "—"}</div>}
+              {edit ? <input type={t ?? "text"} className={`${field} mt-1`} value={String(f[k] ?? "")} onChange={(e) => set({ [k]: e.target.value })} />
+                : <div className="mt-1 font-bold">{t === "date" ? fmt(String(f[k] ?? "")) : String(f[k] ?? "") || "—"}</div>}
             </div>
           ))}
-          <div className="border-l border-border px-6">
+          <div className="min-w-0 border-l border-border px-4 sm:px-6">
             <div className="text-xs text-muted-foreground">Statut</div>
             {edit ? <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.blacklisted} onChange={(e) => set({ blacklisted: e.target.checked })} />Blacklisté</label>
               : <div className={`mt-1 font-bold ${f.blacklisted ? "text-rank-s" : "text-rank-m"}`}>{f.blacklisted ? "Blacklisté" : "Non blacklisté"}</div>}
@@ -307,7 +308,7 @@ function Fiche() {
           </Section>
         </div>
       </div>
-      {zoom && <div className="fixed inset-0 z-50 grid cursor-zoom-out place-items-center bg-background/90 p-6" onClick={() => setZoom(null)}><img src={zoom} alt="" className="max-h-full max-w-full rounded-xl" /></div>}
+      {zoom && <div className="fixed inset-0 z-50 grid animate-in fade-in cursor-zoom-out place-items-center bg-background/90 p-6" onClick={() => setZoom(null)}><img src={zoom} alt="" className="max-h-full max-w-full rounded-xl" /></div>}
     </main>
   );
 }

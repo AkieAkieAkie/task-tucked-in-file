@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_codes: {
+        Row: {
+          hash: string
+          level: string
+          salt: string
+          updated_at: string
+        }
+        Insert: {
+          hash: string
+          level: string
+          salt: string
+          updated_at?: string
+        }
+        Update: {
+          hash?: string
+          level?: string
+          salt?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       friend_directory: {
         Row: {
           friends: Json
