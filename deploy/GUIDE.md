@@ -94,9 +94,12 @@ psql "postgres://cercle:MOT_DE_PASSE_BDD@127.0.0.1:5432/cercle" -f deploy/schema
 
 ```bash
 cd /var/www/cercle
-cp deploy/env.example .env
-nano .env
+cp deploy/env.example serveur.env
+nano serveur.env
+chmod 600 serveur.env
 ```
+
+⚠️ Mets tes réglages dans `serveur.env`, **jamais dans `.env`** : `.env` appartient au projet, et le modifier bloque les mises à jour (`git pull` refuse avec « You have unstaged changes »).
 
 Remplis `DATABASE_URL`, `SITE_PASSWORD`, `ADMIN_PASSWORD`, et pour `SESSION_SECRET` colle le résultat de :
 
@@ -147,13 +150,14 @@ sudo certbot --nginx -d ton-domaine.fr -d www.ton-domaine.fr
 
 ## Mettre à jour le site plus tard
 
+Une seule commande, qui récupère la dernière version, vérifie les réglages et la base, construit et relance le site :
+
 ```bash
 cd /var/www/cercle
-git pull                       # ou renvoie les fichiers par FTP
-bun install
-NITRO_PRESET=node-server bun run build
-pm2 delete cercle; pm2 start deploy/ecosystem.config.cjs && pm2 save
+bash deploy/mettre-a-jour.sh
 ```
+
+Elle doit finir par `✓ Site en ligne`. Sinon, elle affiche ce qui ne va pas (ligne commençant par `✗`).
 
 ## Sauvegarde automatique de la base (conseillé)
 
@@ -172,19 +176,16 @@ crontab -e
 | Erreur 502 Nginx | le site n'est pas lancé : `pm2 logs cercle` |
 | Erreur Nginx | `sudo nginx -t` et `sudo tail /var/log/nginx/error.log` |
 | Le code d'accès ne garde pas la connexion | vérifie que tu es bien en **https://** |
-| « This page didn't load » | `pm2 logs cercle --lines 50` : la vraie cause est affichée (souvent `.env` incomplet ou base injoignable) |
-| « Réglages du serveur incomplets » | complète le `.env` comme indiqué sur la page, puis `pm2 delete cercle && pm2 start deploy/ecosystem.config.cjs && pm2 save` |
+| « This page didn't load » | `pm2 logs cercle --lines 50` : la vraie cause est affichée (souvent `serveur.env` incomplet ou base injoignable) |
+| « Réglages du serveur incomplets » | complète `serveur.env` comme indiqué sur la page, puis `pm2 delete cercle && pm2 start deploy/ecosystem.config.cjs && pm2 save` |
+| `git pull` : « You have unstaged changes » | `git status` puis `git checkout -- .` (tes réglages sont dans `serveur.env`, pas touchés), puis `bash deploy/mettre-a-jour.sh` |
+| Erreur « Missing Supabase environment variable(s) » | ancienne version encore en place : `bash deploy/mettre-a-jour.sh` |
 | « Base de données : … » | suis le message (mot de passe ou adresse dans `DATABASE_URL`, ou relancer `deploy/schema.sql`) |
 
 ### Repartir proprement si le site affiche une erreur
 
 ```bash
 cd /var/www/cercle
-git pull                                  # récupère la dernière version
-cat .env                                  # les 4 réglages doivent être remplis, SESSION_SECRET = 64 caractères
-psql "$(grep ^DATABASE_URL .env | cut -d= -f2-)" -c "select 1"   # doit afficher 1
-psql "$(grep ^DATABASE_URL .env | cut -d= -f2-)" -f deploy/schema.sql
-bun install
-NITRO_PRESET=node-server bun run build
-pm2 delete cercle; pm2 start deploy/ecosystem.config.cjs && pm2 save
+cat serveur.env                           # les 4 réglages doivent être remplis, SESSION_SECRET = 64 caractères
+bash deploy/mettre-a-jour.sh              # vérifie la base, crée les tables, construit et relance
 ```

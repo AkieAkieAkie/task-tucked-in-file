@@ -6,12 +6,15 @@ export const getDirectory = createServerFn({ method: "GET" }).handler(async () =
   requireDirectoryAccess(await getAccess());
   const { readDirectory } = await import("./store.server");
   let data;
-  try { data = await readDirectory(); } catch { throw new Error("Impossible de charger les fiches. Réessaie avec une connexion internet."); }
+  try { data = await readDirectory(); } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Base de données")) throw e;
+    throw new Error("Impossible de charger les fiches. Réessaie avec une connexion internet.");
+  }
   return { friends: friendSchema.array().parse(data?.friends ?? []), version: data?.version ?? 0 };
 });
 
 export const saveDirectory = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => saveDirectorySchema.parse(input))
+  .validator((input: unknown) => saveDirectorySchema.parse(input))
   .handler(async ({ data }) => {
     requireDirectoryAccess(await getAccess(), true);
     const { writeDirectory } = await import("./store.server");
