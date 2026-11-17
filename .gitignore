@@ -33,3 +33,4 @@ dist-ssr
 
 # Server settings on self-hosted installs
 serveur.env
+deploy/.pm2-sudo

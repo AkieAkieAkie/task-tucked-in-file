@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Met à jour le site sur le serveur : bash deploy/mettre-a-jour.sh
 set -euo pipefail
+# PM2 lancé en root (sudo pm2) si le fichier deploy/.pm2-sudo existe, sinon PM2 de l'utilisateur
+PM2="pm2"; [ -f /var/www/cercle/deploy/.pm2-sudo ] && PM2="sudo pm2"
 cd /var/www/cercle
 
 # Anciennes installations : les réglages étaient dans .env, ce qui bloquait git pull.
@@ -36,8 +38,8 @@ NITRO_PRESET=node-server bun run build
 
 PORT=$(grep -E '^PORT=' serveur.env | tail -1 | cut -d= -f2- | tr -d "\"'" || true); PORT=${PORT:-3000}
 echo "→ Redémarrage"
-pm2 delete cercle >/dev/null 2>&1 || true
-pm2 start deploy/ecosystem.config.cjs && pm2 save
+$PM2 delete cercle >/dev/null 2>&1 || true
+$PM2 start deploy/ecosystem.config.cjs && $PM2 save
 for i in $(seq 1 20); do
   code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$PORT/ || true)
   [ "$code" = 200 ] && break; sleep 1
