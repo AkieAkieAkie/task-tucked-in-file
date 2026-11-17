@@ -75,8 +75,11 @@ function ItemList({ items, edit, onChange, kind }: { items: Item[]; edit: boolea
 
 function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: boolean; onChange: (i: Info[]) => void; onZoom: (s: string) => void }) {
   const upd = (id: string, p: Partial<Info>) => onChange(items.map((x) => (x.id === id ? { ...x, ...p } : x)));
+  const [view, setView] = useState<"grid" | "timeline">("grid");
+  if (!edit && view === "timeline") return <InfoTimeline items={items} onZoom={onZoom} setView={setView} />;
   return (
     <div>
+      {!edit && items.length > 0 && <ViewToggle view={view} setView={setView} />}
       {!items.length && !edit && <p className="text-muted-foreground">Aucune information. Clique sur « Modifier » pour en ajouter.</p>}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it) => (
@@ -116,6 +119,62 @@ function InfoList({ items, edit, onChange, onZoom }: { items: Info[]; edit: bool
         ))}
       </div>
       {edit && <button className={`${btn} mt-4`} onClick={() => onChange([...items, { id: uid(), label: "", value: "", image: "" }])}>+ Ajouter une info</button>}
+    </div>
+  );
+}
+
+function ViewToggle({ view, setView }: { view: "grid" | "timeline"; setView: (v: "grid" | "timeline") => void }) {
+  return (
+    <div className="mb-4 inline-flex rounded-lg border border-border p-1 text-xs font-bold">
+      {([["grid", "Grille"], ["timeline", "Chronologie"]] as const).map(([v, l]) => (
+        <button key={v} onClick={() => setView(v)} className={`rounded-md px-3 py-1.5 transition ${view === v ? "bg-gold text-primary-foreground" : "text-muted-foreground hover:text-gold"}`}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+function InfoTimeline({ items, onZoom, setView }: { items: Info[]; onZoom: (s: string) => void; setView: (v: "grid" | "timeline") => void }) {
+  const dated = items.filter((i) => i.date).sort((a, b) => b.date!.localeCompare(a.date!));
+  const undated = items.filter((i) => !i.date);
+  const groups: [string, Info[]][] = [];
+  for (const it of dated) {
+    const key = new Date(it.date!).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const g = groups.find(([k]) => k === key);
+    if (g) g[1].push(it); else groups.push([key, [it]]);
+  }
+  if (undated.length) groups.push(["Sans date", undated]);
+  const newest = dated[0]?.id;
+  return (
+    <div>
+      <ViewToggle view="timeline" setView={setView} />
+      <div className="space-y-6">
+        {groups.map(([month, list]) => (
+          <div key={month}>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground first-letter:uppercase">{month}</p>
+            <ol className="relative space-y-3 border-l border-border pl-6">
+              {list.map((it) => (
+                <li key={it.id} className="relative">
+                  <span className={`absolute -left-[31px] top-3 h-3 w-3 rounded-full ring-4 ring-card ${it.id === newest ? "bg-gold" : !it.date ? "bg-muted-foreground" : infoIsOld(it) ? "bg-oral" : "bg-rank-m"}`} />
+                  <div className={`flex gap-3 rounded-lg border p-3 ${it.id === newest ? "border-gold/50 bg-gold/5" : "border-border bg-background/40"}`}>
+                    {it.image && <img src={it.image} alt="" className="h-14 w-14 shrink-0 cursor-zoom-in rounded-md object-cover" onClick={() => onZoom(it.image)} />}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                        <span className="uppercase tracking-widest text-gold">{it.label || "Info"}</span>
+                        {it.date && <span className="text-muted-foreground">{fmt(it.date)}</span>}
+                        {it.id === newest && <span className="rounded-full bg-gold px-2 py-0.5 uppercase text-primary-foreground">la plus récente</span>}
+                        {it.date && it.id !== newest && (infoIsOld(it)
+                          ? <span className="rounded-full border border-oral/40 bg-oral/10 px-2 py-0.5 uppercase text-oral">à revérifier · {infoAgeDays(it)} j</span>
+                          : <span className="rounded-full border border-rank-m/40 bg-rank-m/10 px-2 py-0.5 uppercase text-rank-m">récente</span>)}
+                      </div>
+                      <div className="mt-0.5 whitespace-pre-wrap break-words text-sm font-medium">{it.value || "—"}</div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
