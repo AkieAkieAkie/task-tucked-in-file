@@ -34,3 +34,4 @@ use the editor.
 - Directory queries refresh on focus and every 15 seconds while visible; editing snapshots retain their original version to reject stale overwrites, and legacy device records import explicitly without replacing shared IDs.
 - Server data access goes through src/lib/store.server.ts: self-hosted PostgreSQL when DATABASE_URL is set, Lovable Cloud otherwise; why: the app can be self-hosted on a VPS without the Cloud service key. Deploy files live in deploy/.
 - src/server.ts checks required settings (src/lib/config-check.ts) before each request and pg errors are rethrown as French hints; why: self-hosted installs otherwise show a generic error page with no clue. deploy/ecosystem.config.cjs parses .env itself so settings load regardless of PM2/Node flags.
+- src/start.ts must not register attachSupabaseAuth; why: the app has no Supabase accounts and the browser Supabase client throws on self-hosted builds without VITE_SUPABASE_* vars, breaking every page.
