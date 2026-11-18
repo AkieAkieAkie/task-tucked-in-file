@@ -116,3 +116,30 @@ export async function readSnapshot(id: string): Promise<{ friends: unknown; vers
   if (error) throw error;
   return data;
 }
+
+// ---- Brute-force blocks (keyed by IP and device cookie) ----
+import type { BlockState } from "./brute-policy";
+export async function readBlock(key: string): Promise<BlockState | null> {
+  const sql = await pg();
+  let r: any;
+  if (sql) {
+    await sql`create table if not exists login_blocks (key text primary key, failures integer not null default 0, blocked_until timestamptz, updated_at timestamptz not null default now())`;
+    r = (await sql`select failures, blocked_until from login_blocks where key = ${key}`)[0];
+  } else {
+    const { data } = await (await cloud()).from("login_blocks").select("failures, blocked_until").eq("key", key).maybeSingle();
+    r = data;
+  }
+  return r ? { failures: Number(r.failures), blockedUntil: r.blocked_until ? new Date(r.blocked_until).getTime() : null } : null;
+}
+export async function writeBlock(key: string, s: BlockState | null) {
+  const sql = await pg();
+  const until = s?.blockedUntil ? new Date(s.blockedUntil).toISOString() : null;
+  if (sql) {
+    if (!s) { await sql`delete from login_blocks where key = ${key}`; return; }
+    await sql`insert into login_blocks (key, failures, blocked_until, updated_at) values (${key}, ${s.failures}, ${until}, now()) on conflict (key) do update set failures = excluded.failures, blocked_until = excluded.blocked_until, updated_at = now()`;
+    return;
+  }
+  const db = (await cloud()).from("login_blocks");
+  if (!s) { await db.delete().eq("key", key); return; }
+  await db.upsert({ key, failures: s.failures, blocked_until: until, updated_at: new Date().toISOString() });
+}

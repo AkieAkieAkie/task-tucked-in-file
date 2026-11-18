@@ -83,6 +83,27 @@ export type Database = {
         }
         Relationships: []
       }
+      login_blocks: {
+        Row: {
+          blocked_until: string | null
+          failures: number
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          failures?: number
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          failures?: number
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

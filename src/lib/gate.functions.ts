@@ -47,7 +47,8 @@ export const getAccess = createServerFn({ method: "GET" }).handler(async () => {
 export const unlock = createServerFn({ method: "POST" })
   .validator((d: { level: "site" | "admin"; code: string }) => d)
   .handler(async ({ data }) => {
-    if (!(await checkCode(data.level, String(data.code)))) return { ok: false };
+    const { guardedCheck } = await import("./brute.server");
+    if (!(await guardedCheck(() => checkCode(data.level, String(data.code))))) return { ok: false };
     const { gateSession } = await import("./gate.server");
     const s = await gateSession();
     const now = Date.now();

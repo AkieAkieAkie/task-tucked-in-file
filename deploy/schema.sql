@@ -19,3 +19,9 @@ CREATE TABLE IF NOT EXISTS directory_snapshots (
   version integer NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS login_blocks (
+  key text PRIMARY KEY,
+  failures integer NOT NULL DEFAULT 0,
+  blocked_until timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
