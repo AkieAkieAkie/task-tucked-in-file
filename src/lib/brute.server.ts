@@ -20,7 +20,7 @@ export async function guardedCheck(check: () => Promise<boolean>): Promise<boole
   const ok = !blocked && (await check());
   if (ok) { await Promise.all(ks.map((k) => writeBlock(k, null).catch(() => {}))); return true; }
   // Failure (or any attempt while blocked counted as wrong): every key gets the stricter state.
-  const wrong = blocked ? true : true;
-  if (wrong) await Promise.all(ks.map((k, i) => writeBlock(k, afterFailure(blocked && !isBlocked(states[i], now) ? states.find((s) => isBlocked(s, now))! : states[i], now)).catch((e) => console.error(e))));
+  const worst = states.find((s) => isBlocked(s, now)) ?? null;
+  await Promise.all(ks.map((k, i) => writeBlock(k, afterFailure(worst ?? states[i] ?? null, now)).catch((e) => console.error(e))));
   return false;
 }
