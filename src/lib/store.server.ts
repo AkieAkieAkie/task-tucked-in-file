@@ -33,6 +33,10 @@ export async function readDirectory(): Promise<Dir> {
 /** Returns "ok", "conflict" or throws. */
 export async function writeDirectory(friends: unknown[], prev: number): Promise<"ok" | "conflict"> {
   const version = prev + 1, updated_at = new Date().toISOString();
+  if (prev > 0) {
+    // Keep the state being replaced so an admin can restore it; never block the save on this.
+    try { const cur = await readDirectory(); if (cur && cur.version === prev) await addSnapshot("auto", "", cur.friends, prev); } catch (e) { console.error(e); }
+  }
   const sql = await pg();
   if (sql) {
     const json = sql.json(friends);
@@ -68,4 +72,47 @@ export async function writeCode(level: "site" | "admin", salt: string, hash: str
   if (sql) { await sql`insert into access_codes (level, salt, hash, updated_at) values (${level}, ${salt}, ${hash}, now()) on conflict (level) do update set salt = excluded.salt, hash = excluded.hash, updated_at = now()`; return; }
   const { error } = await (await cloud()).from("access_codes").upsert({ level, salt, hash, updated_at: new Date().toISOString() });
   if (error) throw error;
+}
+
+// ---- Snapshots (automatic before each write, manual on demand) ----
+export type SnapMeta = { id: string; kind: "auto" | "manual"; label: string; version: number; created_at: string; count: number };
+const AUTO_KEEP = 100;
+
+export async function addSnapshot(kind: "auto" | "manual", label: string, friends: unknown, version: number) {
+  const sql = await pg();
+  if (sql) {
+    await sql`create table if not exists directory_snapshots (id uuid primary key default gen_random_uuid(), kind text not null, label text not null default '', friends jsonb not null, version integer not null, created_at timestamptz not null default now())`;
+    await sql`insert into directory_snapshots (kind, label, friends, version) values (${kind}, ${label}, ${sql.json(friends)}, ${version})`;
+    if (kind === "auto") await sql`delete from directory_snapshots where kind = 'auto' and id not in (select id from directory_snapshots where kind = 'auto' order by created_at desc limit ${AUTO_KEEP})`;
+    return;
+  }
+  const db = await cloud();
+  const { error } = await db.from("directory_snapshots").insert({ kind, label, friends: friends as never, version });
+  if (error) throw error;
+  if (kind === "auto") {
+    const { data } = await db.from("directory_snapshots").select("id").eq("kind", "auto").order("created_at", { ascending: false }).range(AUTO_KEEP, AUTO_KEEP + 500);
+    if (data?.length) await db.from("directory_snapshots").delete().in("id", data.map((r) => r.id));
+  }
+}
+
+export async function listSnapshots(): Promise<SnapMeta[]> {
+  const sql = await pg();
+  let rows: any[];
+  if (sql) {
+    await sql`create table if not exists directory_snapshots (id uuid primary key default gen_random_uuid(), kind text not null, label text not null default '', friends jsonb not null, version integer not null, created_at timestamptz not null default now())`;
+    rows = await sql`select id, kind, label, version, created_at, jsonb_array_length(friends) as count from directory_snapshots order by created_at desc limit 200`;
+  } else {
+    const { data, error } = await (await cloud()).from("directory_snapshots").select("id, kind, label, version, created_at, friends").order("created_at", { ascending: false }).limit(200);
+    if (error) throw error;
+    rows = (data ?? []).map((r) => ({ ...r, count: Array.isArray(r.friends) ? r.friends.length : 0 }));
+  }
+  return rows.map((r) => ({ id: String(r.id), kind: r.kind, label: r.label, version: Number(r.version), created_at: new Date(r.created_at).toISOString(), count: Number(r.count) }));
+}
+
+export async function readSnapshot(id: string): Promise<{ friends: unknown; version: number; created_at: string } | null> {
+  const sql = await pg();
+  if (sql) { const r = await sql`select friends, version, created_at from directory_snapshots where id = ${id}`; return r[0] ? { ...r[0], created_at: new Date(r[0].created_at).toISOString() } : null; }
+  const { data, error } = await (await cloud()).from("directory_snapshots").select("friends, version, created_at").eq("id", id).maybeSingle();
+  if (error) throw error;
+  return data;
 }

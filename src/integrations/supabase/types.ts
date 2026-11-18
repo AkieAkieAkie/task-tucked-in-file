@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      directory_snapshots: {
+        Row: {
+          created_at: string
+          friends: Json
+          id: string
+          kind: string
+          label: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          friends: Json
+          id?: string
+          kind: string
+          label?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          friends?: Json
+          id?: string
+          kind?: string
+          label?: string
+          version?: number
+        }
+        Relationships: []
+      }
       friend_directory: {
         Row: {
           friends: Json

@@ -24,3 +24,31 @@ export const saveDirectory = createServerFn({ method: "POST" })
     if (r === "conflict") return { ok: false as const, conflict: true };
     return { ok: true as const, directory: { friends: data.friends, version: data.version + 1 } };
   });
+
+async function requireAdmin() {
+  const { readGateAccess } = await import("./gate.server");
+  requireDirectoryAccess(await readGateAccess(), true);
+}
+export const listBackups = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdmin();
+  const { listSnapshots } = await import("./store.server");
+  return listSnapshots();
+});
+export const getBackup = createServerFn({ method: "POST" })
+  .validator((d: { id: string }) => ({ id: String(d.id) }))
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { readSnapshot } = await import("./store.server");
+    const s = await readSnapshot(data.id);
+    if (!s) throw new Error("Sauvegarde introuvable.");
+    return { friends: friendSchema.array().parse(s.friends), version: s.version, created_at: s.created_at };
+  });
+export const createBackup = createServerFn({ method: "POST" })
+  .validator((d: { label: string }) => ({ label: String(d.label ?? "").slice(0, 80) }))
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { readDirectory, addSnapshot } = await import("./store.server");
+    const cur = await readDirectory();
+    await addSnapshot("manual", data.label, cur?.friends ?? [], cur?.version ?? 0);
+    return { ok: true as const };
+  });
